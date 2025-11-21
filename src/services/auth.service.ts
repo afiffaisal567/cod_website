@@ -1,15 +1,23 @@
-import prisma from '@/lib/prisma';
-import { hashPassword, comparePassword, generateToken } from '@/utils/crypto.util';
-import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '@/lib/auth';
-import emailService from './email.service';
-import { AppError, UnauthorizedError, ConflictError } from '@/utils/error.util';
-import { HTTP_STATUS, USER_STATUS } from '@/lib/constants';
+import prisma from "@/lib/prisma";
+import {
+  hashPassword,
+  comparePassword,
+  generateToken,
+} from "@/utils/crypto.util";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from "@/lib/auth";
+import emailService from "./email.service";
+import { AppError, UnauthorizedError, ConflictError } from "@/utils/error.util";
+import { HTTP_STATUS, USER_STATUS } from "@/lib/constants";
 import type {
   RegistrationData,
   LoginCredentials,
   AuthResponse,
   TokenPair,
-} from '@/types/auth.types';
+} from "@/types/auth.types";
 
 /**
  * Authentication Service
@@ -20,7 +28,7 @@ export class AuthService {
    * Register new user
    */
   async register(data: RegistrationData): Promise<AuthResponse> {
-    const { email, password, name, disability_type, role = 'STUDENT' } = data;
+    const { email, password, name, disability_type, role = "STUDENT" } = data;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -28,7 +36,7 @@ export class AuthService {
     });
 
     if (existingUser) {
-      throw new ConflictError('User with this email already exists');
+      throw new ConflictError("User with this email already exists");
     }
 
     // Hash password
@@ -62,13 +70,17 @@ export class AuthService {
       data: {
         user_id: user.id,
         token: verificationToken,
-        type: 'EMAIL_VERIFICATION',
+        type: "EMAIL_VERIFICATION",
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
       },
     });
 
-    // Send verification email
-    await emailService.sendVerificationEmail(user.email, user.full_name, verificationToken);
+    // Send verification email (async, don't wait)
+    emailService
+      .sendVerificationEmail(user.email, user.full_name, verificationToken)
+      .catch((error) => {
+        console.error("Failed to send verification email:", error);
+      });
 
     // Generate tokens
     const tokens = this.generateTokenPair(user.id, user.email, user.role);
@@ -97,19 +109,19 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedError('Invalid email or password');
+      throw new UnauthorizedError("Invalid email or password");
     }
 
     // Check password
     const isPasswordValid = await comparePassword(password, user.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedError('Invalid email or password');
+      throw new UnauthorizedError("Invalid email or password");
     }
 
     // Check if user is active
     if (user.status !== USER_STATUS.ACTIVE) {
-      throw new UnauthorizedError('Account is suspended or inactive');
+      throw new UnauthorizedError("Account is suspended or inactive");
     }
 
     // Update last login
@@ -147,13 +159,13 @@ export class AuthService {
       });
 
       if (!user || user.status !== USER_STATUS.ACTIVE) {
-        throw new UnauthorizedError('Invalid refresh token');
+        throw new UnauthorizedError("Invalid refresh token");
       }
 
       // Generate new token pair
       return this.generateTokenPair(user.id, user.email, user.role);
     } catch (error) {
-      throw new UnauthorizedError('Invalid refresh token');
+      throw new UnauthorizedError("Invalid refresh token");
     }
   }
 
@@ -166,9 +178,6 @@ export class AuthService {
       where: { id: userId },
       data: { last_login: new Date() },
     });
-
-    // In production, you might want to blacklist tokens in Redis
-    // await redis.set(`blacklist:${token}`, '1', 'EX', 3600);
   }
 
   /**
@@ -176,9 +185,9 @@ export class AuthService {
    */
   async verifyEmail(token: string): Promise<void> {
     const verificationToken = await prisma.verificationToken.findFirst({
-      where: { 
+      where: {
         token,
-        type: 'EMAIL_VERIFICATION',
+        type: "EMAIL_VERIFICATION",
         expires_at: { gt: new Date() },
         used_at: null,
       },
@@ -186,13 +195,16 @@ export class AuthService {
     });
 
     if (!verificationToken) {
-      throw new AppError('Invalid or expired verification token', HTTP_STATUS.BAD_REQUEST);
+      throw new AppError(
+        "Invalid or expired verification token",
+        HTTP_STATUS.BAD_REQUEST
+      );
     }
 
     // Update user email verification status
     await prisma.user.update({
       where: { id: verificationToken.user_id },
-      data: { 
+      data: {
         email_verified: true,
         email_verified_at: new Date(),
       },
@@ -221,18 +233,31 @@ export class AuthService {
     // Generate reset token
     const resetToken = generateToken();
 
+    // Delete any existing unused tokens
+    await prisma.verificationToken.deleteMany({
+      where: {
+        user_id: user.id,
+        type: "PASSWORD_RESET",
+        used_at: null,
+      },
+    });
+
     // Store token
     await prisma.verificationToken.create({
       data: {
         user_id: user.id,
         token: resetToken,
-        type: 'PASSWORD_RESET',
+        type: "PASSWORD_RESET",
         expires_at: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour
       },
     });
 
-    // Send reset email
-    await emailService.sendPasswordResetEmail(user.email, user.full_name, resetToken);
+    // Send reset email (async, don't wait)
+    emailService
+      .sendPasswordResetEmail(user.email, user.full_name, resetToken)
+      .catch((error) => {
+        console.error("Failed to send password reset email:", error);
+      });
   }
 
   /**
@@ -240,9 +265,9 @@ export class AuthService {
    */
   async resetPassword(token: string, newPassword: string): Promise<void> {
     const resetToken = await prisma.verificationToken.findFirst({
-      where: { 
+      where: {
         token,
-        type: 'PASSWORD_RESET',
+        type: "PASSWORD_RESET",
         expires_at: { gt: new Date() },
         used_at: null,
       },
@@ -250,7 +275,10 @@ export class AuthService {
     });
 
     if (!resetToken) {
-      throw new AppError('Invalid or expired reset token', HTTP_STATUS.BAD_REQUEST);
+      throw new AppError(
+        "Invalid or expired reset token",
+        HTTP_STATUS.BAD_REQUEST
+      );
     }
 
     // Hash new password
@@ -282,14 +310,17 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new AppError('User not found', HTTP_STATUS.NOT_FOUND);
+      throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
     }
 
     // Verify current password
-    const isPasswordValid = await comparePassword(currentPassword, user.password);
+    const isPasswordValid = await comparePassword(
+      currentPassword,
+      user.password
+    );
 
     if (!isPasswordValid) {
-      throw new UnauthorizedError('Current password is incorrect');
+      throw new UnauthorizedError("Current password is incorrect");
     }
 
     // Hash new password
@@ -316,17 +347,18 @@ export class AuthService {
     }
 
     if (user.email_verified) {
-      throw new AppError('Email already verified', HTTP_STATUS.BAD_REQUEST);
+      throw new AppError("Email already verified", HTTP_STATUS.BAD_REQUEST);
     }
 
     // Generate new verification token
     const verificationToken = generateToken();
 
-    // Delete any existing verification tokens
+    // Delete any existing unused verification tokens
     await prisma.verificationToken.deleteMany({
-      where: { 
+      where: {
         user_id: user.id,
-        type: 'EMAIL_VERIFICATION',
+        type: "EMAIL_VERIFICATION",
+        used_at: null,
       },
     });
 
@@ -335,12 +367,17 @@ export class AuthService {
       data: {
         user_id: user.id,
         token: verificationToken,
-        type: 'EMAIL_VERIFICATION',
+        type: "EMAIL_VERIFICATION",
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
       },
     });
 
-    await emailService.sendVerificationEmail(user.email, user.full_name, verificationToken);
+    // Send verification email (await to ensure it's sent)
+    await emailService.sendVerificationEmail(
+      user.email,
+      user.full_name,
+      verificationToken
+    );
   }
 
   /**
@@ -364,7 +401,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new AppError('User not found', HTTP_STATUS.NOT_FOUND);
+      throw new AppError("User not found", HTTP_STATUS.NOT_FOUND);
     }
 
     return {
@@ -384,7 +421,11 @@ export class AuthService {
   /**
    * Generate token pair
    */
-  private generateTokenPair(userId: string, email: string, role: string): TokenPair {
+  private generateTokenPair(
+    userId: string,
+    email: string,
+    role: string
+  ): TokenPair {
     return {
       accessToken: generateAccessToken({ userId, email, role }),
       refreshToken: generateRefreshToken({ userId, email, role }),

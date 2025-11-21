@@ -46,3 +46,13 @@
 2025-11-21 14:58:38:5838 [35mhttp[39m: [35mGET http://localhost:3000/api/auth/me 401 - 5ms[39m
 2025-11-21 15:00:20:020 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/login 200 - 515ms[39m
 2025-11-21 15:00:26:026 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/logout 401 - 4ms[39m
+2025-11-21 19:43:08:438 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/login 200 - 664ms[39m
+2025-11-21 19:43:15:4315 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/logout 401 - 9ms[39m
+2025-11-21 19:43:29:4329 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/change-password 401 - 6ms[39m
+2025-11-21 19:43:52:4352 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/reset-password 400 - 62ms[39m
+2025-11-21 19:44:01:441 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/forgot-password 200 - 46ms[39m
+2025-11-21 19:44:32:4432 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/resend-verification 429 - 1ms[39m
+2025-11-21 19:46:51:4651 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/verify-email 200 - 21ms[39m
+2025-11-21 19:47:07:477 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/resend-verification 429 - 4ms[39m
+2025-11-21 19:49:25:4925 [35mhttp[39m: [35mGET http://localhost:3000/api/auth/me 401 - 96ms[39m
+2025-11-21 19:50:13:5013 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/refresh 200 - 20ms[39m

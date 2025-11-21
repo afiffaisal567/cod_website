@@ -1,8 +1,8 @@
-import { sendEmail } from "@/lib/email";
+import nodemailer from "nodemailer";
 import { emailConfig } from "@/config/email.config";
 import { appConfig } from "@/config/app.config";
 
-// Define EmailOptions locally to avoid type issues
+// Email Options Interface
 interface EmailOptions {
   to: string | string[];
   subject: string;
@@ -16,52 +16,57 @@ interface EmailOptions {
 }
 
 /**
- * Simple in-memory email queue
+ * Create Nodemailer Transporter
  */
-class EmailQueue {
-  private queue: Array<{ data: EmailOptions; priority: number }> = [];
-  private processing = false;
+const transporter = nodemailer.createTransporter({
+  host: emailConfig.smtp.host,
+  port: emailConfig.smtp.port,
+  secure: emailConfig.smtp.secure, // true for 465, false for other ports
+  auth: {
+    user: emailConfig.smtp.auth.user,
+    pass: emailConfig.smtp.auth.pass,
+  },
+  // Additional options for better reliability
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
+  rateDelta: 1000,
+  rateLimit: 5,
+});
 
-  async add(
-    jobName: string,
-    data: EmailOptions,
-    options?: { priority?: number }
-  ) {
-    this.queue.push({
-      data,
-      priority: options?.priority || 5,
+// Verify transporter on startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ Email transporter verification failed:", error);
+  } else {
+    console.log("✅ Email server is ready to send emails");
+  }
+});
+
+/**
+ * Send Email Function
+ */
+async function sendEmail(options: EmailOptions): Promise<void> {
+  try {
+    const info = await transporter.sendMail({
+      from: `${emailConfig.from.name} <${emailConfig.from.address}>`,
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+      attachments: options.attachments,
     });
 
-    // Sort by priority (lower number = higher priority)
-    this.queue.sort((a, b) => a.priority - b.priority);
-
-    if (!this.processing) {
-      this.processQueue();
-    }
-  }
-
-  private async processQueue() {
-    this.processing = true;
-    while (this.queue.length > 0) {
-      const job = this.queue.shift();
-      if (job) {
-        try {
-          await sendEmail(job.data);
-          console.log("✅ Email sent:", job.data.subject);
-        } catch (error) {
-          console.error("❌ Email send failed:", error);
-        }
-      }
-    }
-    this.processing = false;
+    console.log("✅ Email sent successfully:", info.messageId);
+    console.log("Preview URL:", nodemailer.getTestMessageUrl(info));
+  } catch (error) {
+    console.error("❌ Error sending email:", error);
+    throw error;
   }
 }
 
-// Create email queue instance
-const emailQueue = new EmailQueue();
-
 /**
- * Email Service
+ * Email Service Class
  */
 export class EmailService {
   /**
@@ -72,10 +77,11 @@ export class EmailService {
   }
 
   /**
-   * Queue email for background sending
+   * Queue email (for now, just send immediately)
    */
   async queue(options: EmailOptions, priority?: number): Promise<void> {
-    await emailQueue.add("send-email", options, { priority: priority || 5 });
+    // For now, send immediately. In production, use a proper queue like BullMQ
+    await sendEmail(options);
   }
 
   /**
@@ -84,7 +90,7 @@ export class EmailService {
   async sendWelcomeEmail(to: string, userName: string): Promise<void> {
     const html = this.generateWelcomeTemplate(userName);
 
-    await this.queue({
+    await sendEmail({
       to,
       subject: emailConfig.types.welcome.subject,
       html,
@@ -102,10 +108,11 @@ export class EmailService {
     const verificationUrl = `${appConfig.url}/verify-email?token=${token}`;
     const html = this.generateVerificationTemplate(userName, verificationUrl);
 
-    await this.queue({
+    await sendEmail({
       to,
       subject: emailConfig.types.verifyEmail.subject,
       html,
+      text: `Hi ${userName},\n\nPlease verify your email by clicking this link: ${verificationUrl}\n\nThis link will expire in 24 hours.`,
     });
   }
 
@@ -120,10 +127,11 @@ export class EmailService {
     const resetUrl = `${appConfig.url}/reset-password?token=${token}`;
     const html = this.generatePasswordResetTemplate(userName, resetUrl);
 
-    await this.queue({
+    await sendEmail({
       to,
       subject: emailConfig.types.resetPassword.subject,
       html,
+      text: `Hi ${userName},\n\nYou requested to reset your password. Click this link: ${resetUrl}\n\nThis link will expire in 1 hour.`,
     });
   }
 
@@ -137,7 +145,7 @@ export class EmailService {
   ): Promise<void> {
     const html = this.generateCourseEnrollmentTemplate(userName, courseName);
 
-    await this.queue({
+    await sendEmail({
       to,
       subject: emailConfig.types.courseEnrollment.subject,
       html,
@@ -159,7 +167,7 @@ export class EmailService {
       certificateUrl
     );
 
-    await this.queue({
+    await sendEmail({
       to,
       subject: emailConfig.types.certificateIssued.subject,
       html,
@@ -181,7 +189,7 @@ export class EmailService {
       courseName
     );
 
-    await this.queue({
+    await sendEmail({
       to,
       subject: emailConfig.types.paymentSuccess.subject,
       html,
@@ -194,7 +202,7 @@ export class EmailService {
   async sendMentorApprovedEmail(to: string, userName: string): Promise<void> {
     const html = this.generateMentorApprovedTemplate(userName);
 
-    await this.queue({
+    await sendEmail({
       to,
       subject: emailConfig.types.mentorApproved.subject,
       html,
@@ -211,7 +219,7 @@ export class EmailService {
   ): Promise<void> {
     const html = this.generateMentorRejectedTemplate(userName, reason);
 
-    await this.queue({
+    await sendEmail({
       to,
       subject: emailConfig.types.mentorRejected.subject,
       html,
@@ -268,6 +276,7 @@ export class EmailService {
           .header { background: #4F46E5; color: white; padding: 20px; text-align: center; }
           .content { padding: 20px; background: #f9fafb; }
           .button { display: inline-block; padding: 12px 24px; background: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .code { background: #e5e7eb; padding: 10px; font-family: monospace; font-size: 14px; border-radius: 5px; margin: 10px 0; word-break: break-all; }
         </style>
       </head>
       <body>
@@ -279,8 +288,10 @@ export class EmailService {
             <p>Hi ${userName},</p>
             <p>Please verify your email address to activate your account.</p>
             <a href="${verificationUrl}" class="button">Verify Email</a>
-            <p>Or copy this link: ${verificationUrl}</p>
+            <p>Or copy and paste this link in your browser:</p>
+            <div class="code">${verificationUrl}</div>
             <p>This link will expire in 24 hours.</p>
+            <p>If you didn't create an account, please ignore this email.</p>
           </div>
         </div>
       </body>
@@ -302,6 +313,7 @@ export class EmailService {
           .header { background: #4F46E5; color: white; padding: 20px; text-align: center; }
           .content { padding: 20px; background: #f9fafb; }
           .button { display: inline-block; padding: 12px 24px; background: #4F46E5; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .code { background: #e5e7eb; padding: 10px; font-family: monospace; font-size: 14px; border-radius: 5px; margin: 10px 0; word-break: break-all; }
         </style>
       </head>
       <body>
@@ -313,7 +325,8 @@ export class EmailService {
             <p>Hi ${userName},</p>
             <p>You requested to reset your password. Click the button below to set a new password.</p>
             <a href="${resetUrl}" class="button">Reset Password</a>
-            <p>Or copy this link: ${resetUrl}</p>
+            <p>Or copy and paste this link in your browser:</p>
+            <div class="code">${resetUrl}</div>
             <p>This link will expire in 1 hour.</p>
             <p>If you didn't request this, please ignore this email.</p>
           </div>

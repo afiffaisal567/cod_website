@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimitResponse } from "@/utils/response.util";
 import { RATE_LIMIT } from "@/lib/constants";
-
-// In-memory store for rate limiting (use Redis in production)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+import { redis } from "@/lib/redis";
 
 /**
- * Rate Limiting Middleware
+ * Rate Limiting Middleware using Upstash Redis
  */
 export function rateLimit(options?: {
   windowMs?: number;
@@ -14,23 +12,42 @@ export function rateLimit(options?: {
 }): (
   handler: (request: NextRequest) => Promise<NextResponse>
 ) => (request: NextRequest) => Promise<NextResponse> {
-  const windowMs = options?.windowMs || RATE_LIMIT.WINDOW_MS;
+  const windowSeconds = Math.floor(
+    (options?.windowMs || RATE_LIMIT.WINDOW_MS) / 1000
+  );
   const maxRequests = options?.maxRequests || RATE_LIMIT.MAX_REQUESTS;
 
   return (handler) => {
     return async (request: NextRequest) => {
       // Get client identifier (IP address or user ID)
       const clientId = getClientIdentifier(request);
+      const key = `ratelimit:${clientId}`;
 
-      // Check rate limit
-      const isAllowed = checkRateLimit(clientId, windowMs, maxRequests);
+      try {
+        // Get current count
+        const current = await redis.get<number>(key);
 
-      if (!isAllowed) {
-        return rateLimitResponse("Too many requests. Please try again later.");
+        if (current === null) {
+          // First request in window
+          await redis.set(key, 1, { ex: windowSeconds });
+          return handler(request);
+        }
+
+        if (current >= maxRequests) {
+          // Rate limit exceeded
+          return rateLimitResponse(
+            "Too many requests. Please try again later."
+          );
+        }
+
+        // Increment counter
+        await redis.incr(key);
+        return handler(request);
+      } catch (error) {
+        console.error("Rate limit error:", error);
+        // If Redis fails, allow the request
+        return handler(request);
       }
-
-      // Proceed to handler
-      return handler(request);
     };
   };
 }
@@ -50,55 +67,6 @@ function getClientIdentifier(request: NextRequest): string {
   const ip = forwarded ? forwarded.split(",")[0] : "unknown";
 
   return `ip:${ip}`;
-}
-
-/**
- * Check if request is within rate limit
- */
-function checkRateLimit(
-  clientId: string,
-  windowMs: number,
-  maxRequests: number
-): boolean {
-  const now = Date.now();
-  const clientData = rateLimitStore.get(clientId);
-
-  // First request or expired window
-  if (!clientData || now > clientData.resetTime) {
-    rateLimitStore.set(clientId, {
-      count: 1,
-      resetTime: now + windowMs,
-    });
-    return true;
-  }
-
-  // Within window
-  if (clientData.count < maxRequests) {
-    clientData.count++;
-    return true;
-  }
-
-  // Rate limit exceeded
-  return false;
-}
-
-/**
- * Cleanup expired rate limit entries (call periodically)
- */
-export function cleanupRateLimitStore(): void {
-  const now = Date.now();
-  const entries = Array.from(rateLimitStore.entries());
-
-  for (const [clientId, data] of entries) {
-    if (now > data.resetTime) {
-      rateLimitStore.delete(clientId);
-    }
-  }
-}
-
-// Cleanup every 5 minutes
-if (typeof window === "undefined") {
-  setInterval(cleanupRateLimitStore, 5 * 60 * 1000);
 }
 
 /**
