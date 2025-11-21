@@ -1,22 +1,11 @@
 import prisma from "@/lib/prisma";
 import emailService from "./email.service";
-import type { NotificationType, Notification } from "@prisma/client";
+import type {
+  NotificationType,
+  Notification,
+  NotificationSettings,
+} from "@prisma/client";
 import type { Prisma } from "@prisma/client";
-
-// Define UserPreferences interface if not exported from Prisma
-interface UserPreferences {
-  id: string;
-  userId: string;
-  emailNotifications: boolean;
-  pushNotifications: boolean;
-  courseUpdates: boolean;
-  paymentNotifications: boolean;
-  certificateNotifications: boolean;
-  commentNotifications: boolean;
-  reviewNotifications: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
 
 export class NotificationService {
   /**
@@ -29,42 +18,17 @@ export class NotificationService {
     message: string,
     data?: Record<string, unknown>
   ): Promise<void> {
-    // Check notification settings - try multiple possible table names
-    let settings: UserPreferences | null = null;
+    // Check notification settings
+    let settings: NotificationSettings | null = null;
 
     try {
-      // Try userPreferences first
-      const userPrefsTable = prisma as {
-        userPreferences?: {
-          findUnique: (args: {
-            where: { userId: string };
-          }) => Promise<UserPreferences | null>;
-        };
-      };
-      if (userPrefsTable.userPreferences) {
-        settings = await userPrefsTable.userPreferences.findUnique({
-          where: { userId },
-        });
-      }
-    } catch {
-      // If that fails, try notificationPreferences
-      try {
-        const notifPrefsTable = prisma as {
-          notificationPreferences?: {
-            findUnique: (args: {
-              where: { userId: string };
-            }) => Promise<UserPreferences | null>;
-          };
-        };
-        if (notifPrefsTable.notificationPreferences) {
-          settings = await notifPrefsTable.notificationPreferences.findUnique({
-            where: { userId },
-          });
-        }
-      } catch {
-        // If both fail, continue without settings (all notifications enabled)
-        settings = null;
-      }
+      // Use the correct Prisma model name (notification_settings becomes notificationSettings)
+      settings = await prisma.notificationSettings.findUnique({
+        where: { user_id: userId },
+      });
+    } catch (error) {
+      console.error("Failed to fetch notification settings:", error);
+      // Continue without settings (all notifications enabled by default)
     }
 
     // Check if this type of notification is enabled
@@ -72,10 +36,10 @@ export class NotificationService {
       return; // Skip notification
     }
 
-    // Create notification
+    // Create notification - use camelCase for Prisma client
     await prisma.notification.create({
       data: {
-        userId,
+        user_id: userId,
         type,
         title,
         message,
@@ -84,8 +48,8 @@ export class NotificationService {
       },
     });
 
-    // Send email if enabled
-    if (settings?.emailNotifications) {
+    // Send email if enabled - use camelCase for Prisma client fields
+    if (settings?.email_notifications) {
       await this.sendEmailNotification(userId, title, message);
     }
   }
@@ -94,17 +58,20 @@ export class NotificationService {
    * Check if notification type is enabled
    */
   private isNotificationEnabled(
-    settings: UserPreferences,
+    settings: NotificationSettings,
     type: NotificationType
   ): boolean {
-    const typeMap: Record<string, keyof UserPreferences> = {
-      COURSE_ENROLLMENT: "courseUpdates",
-      COURSE_UPDATE: "courseUpdates",
-      PAYMENT_SUCCESS: "paymentNotifications",
-      PAYMENT_FAILED: "paymentNotifications",
-      CERTIFICATE_ISSUED: "certificateNotifications",
-      COMMENT_REPLY: "commentNotifications",
-      REVIEW_RECEIVED: "reviewNotifications",
+    const typeMap: Record<string, keyof NotificationSettings> = {
+      COURSE_ENROLLMENT: "course_updates",
+      COURSE_UPDATE: "course_updates",
+      PAYMENT_SUCCESS: "payment_notifications",
+      PAYMENT_FAILED: "payment_notifications",
+      CERTIFICATE_ISSUED: "certificate_notifications",
+      COMMENT_REPLY: "comment_notifications",
+      REVIEW_RECEIVED: "review_notifications",
+      MENTOR_APPROVED: "course_updates", // Map to appropriate setting
+      MENTOR_REJECTED: "course_updates", // Map to appropriate setting
+      SYSTEM_ANNOUNCEMENT: "email_notifications", // Use general email setting
     };
 
     const settingKey = typeMap[type];
@@ -122,7 +89,7 @@ export class NotificationService {
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { email: true, name: true },
+        select: { email: true, full_name: true },
       });
 
       if (user) {
@@ -150,8 +117,8 @@ export class NotificationService {
     limit: number = 10
   ): Promise<Notification[]> {
     return prisma.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
+      where: { user_id: userId },
+      orderBy: { created_at: "desc" },
       take: limit,
     });
   }
@@ -164,7 +131,7 @@ export class NotificationService {
       where: { id: notificationId },
       data: {
         status: "READ",
-        readAt: new Date(),
+        read_at: new Date(),
       },
     });
   }
@@ -175,12 +142,12 @@ export class NotificationService {
   async markAllAsRead(userId: string): Promise<void> {
     await prisma.notification.updateMany({
       where: {
-        userId,
+        user_id: userId,
         status: "UNREAD",
       },
       data: {
         status: "READ",
-        readAt: new Date(),
+        read_at: new Date(),
       },
     });
   }
@@ -200,7 +167,7 @@ export class NotificationService {
   async getUnreadCount(userId: string): Promise<number> {
     return prisma.notification.count({
       where: {
-        userId,
+        user_id: userId,
         status: "UNREAD",
       },
     });
@@ -215,7 +182,7 @@ export class NotificationService {
 
     const result = await prisma.notification.deleteMany({
       where: {
-        createdAt: {
+        created_at: {
           lt: cutoffDate,
         },
         status: "READ",

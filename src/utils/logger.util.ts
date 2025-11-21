@@ -1,5 +1,6 @@
-import winston from 'winston';
-import path from 'path';
+// src/utils/logger.util.ts
+import winston from "winston";
+import path from "path";
 
 // Define log levels
 const levels = {
@@ -12,11 +13,11 @@ const levels = {
 
 // Define log colors
 const colors = {
-  error: 'red',
-  warn: 'yellow',
-  info: 'green',
-  http: 'magenta',
-  debug: 'white',
+  error: "red",
+  warn: "yellow",
+  info: "green",
+  http: "magenta",
+  debug: "white",
 };
 
 // Add colors to winston
@@ -24,9 +25,11 @@ winston.addColors(colors);
 
 // Define log format
 const format = winston.format.combine(
-  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
+  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss:ms" }),
   winston.format.colorize({ all: true }),
-  winston.format.printf((info) => `${info.timestamp} ${info.level}: ${info.message}`)
+  winston.format.printf(
+    (info) => `${info.timestamp} ${info.level}: ${info.message}`
+  )
 );
 
 // Define transports
@@ -36,19 +39,19 @@ const transports = [
 
   // Error log file
   new winston.transports.File({
-    filename: path.join(process.env.LOG_FILE_PATH || './logs', 'error.log'),
-    level: 'error',
+    filename: path.join(process.env.LOG_FILE_PATH || "./logs", "error.log"),
+    level: "error",
   }),
 
   // Combined log file
   new winston.transports.File({
-    filename: path.join(process.env.LOG_FILE_PATH || './logs', 'combined.log'),
+    filename: path.join(process.env.LOG_FILE_PATH || "./logs", "combined.log"),
   }),
 ];
 
 // Create logger instance
 const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
+  level: process.env.LOG_LEVEL || "info",
   levels,
   format,
   transports,
@@ -68,7 +71,7 @@ export function logError(message: string, error?: unknown): void {
 /**
  * Log warning
  */
-export function logWarning(message: string, meta?: unknown): void {
+export function logWarn(message: string, meta?: unknown): void {
   logger.warn(message, meta as Record<string, unknown>);
 }
 
@@ -97,7 +100,7 @@ export function logHttp(message: string, meta?: unknown): void {
  * Log database query
  */
 export function logQuery(query: string, duration?: number): void {
-  logger.debug(`DB Query: ${query}${duration ? ` (${duration}ms)` : ''}`);
+  logger.debug(`DB Query: ${query}${duration ? ` (${duration}ms)` : ""}`);
 }
 
 /**
