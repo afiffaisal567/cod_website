@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import { logInfo, logError, logWarn } from '@/utils/logger.util';
+import { PrismaClient } from "@prisma/client";
+import { logInfo, logError, logWarn } from "@/utils/logger.util";
 
 /**
  * Database Configuration
@@ -7,21 +7,23 @@ import { logInfo, logError, logWarn } from '@/utils/logger.util';
 export const databaseConfig = {
   // Connection pool settings
   pool: {
-    min: parseInt(process.env.DATABASE_POOL_MIN || '2'),
-    max: parseInt(process.env.DATABASE_POOL_MAX || '10'),
-    idleTimeoutMillis: parseInt(process.env.DATABASE_IDLE_TIMEOUT || '30000'),
-    connectionTimeoutMillis: parseInt(process.env.DATABASE_CONNECTION_TIMEOUT || '10000'),
+    min: parseInt(process.env.DATABASE_POOL_MIN || "2"),
+    max: parseInt(process.env.DATABASE_POOL_MAX || "10"),
+    idleTimeoutMillis: parseInt(process.env.DATABASE_IDLE_TIMEOUT || "30000"),
+    connectionTimeoutMillis: parseInt(
+      process.env.DATABASE_CONNECTION_TIMEOUT || "10000"
+    ),
   },
 
   // Query optimization
   query: {
-    timeoutMs: parseInt(process.env.DATABASE_QUERY_TIMEOUT || '15000'),
-    slowQueryThreshold: parseInt(process.env.SLOW_QUERY_THRESHOLD || '3000'),
+    timeoutMs: parseInt(process.env.DATABASE_QUERY_TIMEOUT || "15000"),
+    slowQueryThreshold: parseInt(process.env.SLOW_QUERY_THRESHOLD || "3000"),
   },
 
   // Logging
   logging: {
-    enabled: process.env.DATABASE_LOGGING === 'true',
+    enabled: process.env.DATABASE_LOGGING === "true",
     slowQueries: true,
     errors: true,
   },
@@ -59,7 +61,6 @@ class DatabaseManager {
         },
       });
 
-      this.setupMiddleware();
       this.setupEventHandlers();
     }
 
@@ -74,124 +75,37 @@ class DatabaseManager {
       return [];
     }
 
-    const logConfig: any[] = [];
-
-    if (databaseConfig.logging.slowQueries) {
-      logConfig.push({
-        emit: 'event',
-        level: 'query',
-      });
-    }
-
-    if (databaseConfig.logging.errors) {
-      logConfig.push({
-        emit: 'event',
-        level: 'error',
-      });
-    }
-
-    logConfig.push({
-      emit: 'event',
-      level: 'warn',
-    });
+    const logConfig: any[] = ["query", "error", "warn"];
 
     return logConfig;
   }
 
   /**
-   * Setup Prisma middleware for performance monitoring
-   */
-  private setupMiddleware() {
-    if (!this.prisma) return;
-
-    // Query performance monitoring
-    this.prisma.$use(async (params, next) => {
-      const before = Date.now();
-      const result = await next(params);
-      const after = Date.now();
-      const duration = after - before;
-
-      // Log slow queries
-      if (duration > databaseConfig.query.slowQueryThreshold) {
-        logWarn('Slow query detected', {
-          model: params.model,
-          action: params.action,
-          duration: `${duration}ms`,
-        });
-      }
-
-      return result;
-    });
-
-    // Connection retry middleware
-    this.prisma.$use(async (params, next) => {
-      let attempts = 0;
-      let lastError: Error | null = null;
-
-      while (attempts < databaseConfig.retry.maxAttempts) {
-        try {
-          return await next(params);
-        } catch (error: any) {
-          lastError = error;
-          attempts++;
-
-          // Check if error is retryable
-          if (!this.isRetryableError(error)) {
-            throw error;
-          }
-
-          if (attempts < databaseConfig.retry.maxAttempts) {
-            const backoff = Math.min(
-              databaseConfig.retry.backoff.initial *
-                Math.pow(databaseConfig.retry.backoff.multiplier, attempts - 1),
-              databaseConfig.retry.backoff.max
-            );
-
-            logWarn(`Database query failed, retrying in ${backoff}ms`, {
-              attempt: attempts,
-              model: params.model,
-              action: params.action,
-            });
-
-            await new Promise((resolve) => setTimeout(resolve, backoff));
-          }
-        }
-      }
-
-      throw lastError;
-    });
-  }
-
-  /**
-   * Setup event handlers
+   * Setup event handlers for logging
    */
   private setupEventHandlers() {
     if (!this.prisma) return;
 
-    // Query logging
-    this.prisma.$on('query' as any, (e: any) => {
-      if (e.duration > databaseConfig.query.slowQueryThreshold) {
-        logWarn('Slow query', {
-          query: e.query,
-          duration: `${e.duration}ms`,
-          params: e.params,
-        });
-      }
-    });
+    // Query logging with performance monitoring
+    this.prisma.$extends({
+      query: {
+        async $allOperations({ operation, model, args, query }) {
+          const start = Date.now();
+          const result = await query(args);
+          const duration = Date.now() - start;
 
-    // Error logging
-    this.prisma.$on('error' as any, (e: any) => {
-      logError('Database error', {
-        message: e.message,
-        target: e.target,
-      });
-    });
+          // Log slow queries
+          if (duration > databaseConfig.query.slowQueryThreshold) {
+            logWarn("Slow query detected", {
+              model,
+              operation,
+              duration: `${duration}ms`,
+            });
+          }
 
-    // Warning logging
-    this.prisma.$on('warn' as any, (e: any) => {
-      logWarn('Database warning', {
-        message: e.message,
-      });
+          return result;
+        },
+      },
     });
   }
 
@@ -200,10 +114,10 @@ class DatabaseManager {
    */
   private isRetryableError(error: any): boolean {
     const retryableErrors = [
-      'P1001', // Can't reach database server
-      'P1002', // Database server timeout
-      'P1008', // Operations timed out
-      'P2024', // Timed out fetching a connection
+      "P1001", // Can't reach database server
+      "P1002", // Database server timeout
+      "P1008", // Operations timed out
+      "P2024", // Timed out fetching a connection
     ];
 
     return retryableErrors.some((code) => error.code === code);
@@ -224,10 +138,10 @@ class DatabaseManager {
       this.isConnected = true;
       this.connectionAttempts = 0;
 
-      logInfo('Database connected successfully');
+      logInfo("Database connected successfully");
     } catch (error) {
       this.connectionAttempts++;
-      logError('Database connection failed', {
+      logError("Database connection failed", {
         attempt: this.connectionAttempts,
         error,
       });
@@ -246,9 +160,9 @@ class DatabaseManager {
     try {
       await this.prisma.$disconnect();
       this.isConnected = false;
-      logInfo('Database disconnected');
+      logInfo("Database disconnected");
     } catch (error) {
-      logError('Database disconnection failed', error);
+      logError("Database disconnection failed", error);
       throw error;
     }
   }
@@ -262,7 +176,7 @@ class DatabaseManager {
       await client.$queryRaw`SELECT 1`;
       return true;
     } catch (error) {
-      logError('Database health check failed', error);
+      logError("Database health check failed", error);
       return false;
     }
   }
@@ -283,6 +197,48 @@ class DatabaseManager {
   }
 
   /**
+   * Execute operation with retry logic
+   */
+  async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    context: { model?: string; action?: string } = {}
+  ): Promise<T> {
+    let attempts = 0;
+    let lastError: Error | null = null;
+
+    while (attempts < databaseConfig.retry.maxAttempts) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        lastError = error;
+        attempts++;
+
+        // Check if error is retryable
+        if (!this.isRetryableError(error)) {
+          throw error;
+        }
+
+        if (attempts < databaseConfig.retry.maxAttempts) {
+          const backoff = Math.min(
+            databaseConfig.retry.backoff.initial *
+              Math.pow(databaseConfig.retry.backoff.multiplier, attempts - 1),
+            databaseConfig.retry.backoff.max
+          );
+
+          logWarn(`Database operation failed, retrying in ${backoff}ms`, {
+            attempt: attempts,
+            ...context,
+          });
+
+          await new Promise((resolve) => setTimeout(resolve, backoff));
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  /**
    * Optimize database tables (analyze)
    */
   async optimize(): Promise<void> {
@@ -292,22 +248,9 @@ class DatabaseManager {
       // Analyze tables for query optimization
       await client.$executeRaw`ANALYZE`;
 
-      logInfo('Database optimization completed');
+      logInfo("Database optimization completed");
     } catch (error) {
-      logError('Database optimization failed', error);
-    }
-  }
-
-  /**
-   * Clear query cache
-   */
-  async clearCache(): Promise<void> {
-    try {
-      // Prisma doesn't have explicit cache clearing
-      // This is more for future implementation
-      logInfo('Database cache cleared');
-    } catch (error) {
-      logError('Database cache clear failed', error);
+      logError("Database optimization failed", error);
     }
   }
 }
@@ -317,3 +260,6 @@ export const databaseManager = new DatabaseManager();
 
 // Export default Prisma client
 export const prisma = databaseManager.getClient();
+
+// Export database config as default
+export default databaseConfig;

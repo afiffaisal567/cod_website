@@ -3,6 +3,8 @@ import { hashPassword } from "@/utils/crypto.util";
 import { ConflictError, NotFoundError } from "@/utils/error.util";
 import { USER_STATUS } from "@/lib/constants";
 import type { UserRole, UserStatus, Prisma } from "@prisma/client";
+// Import DisabilityType as value, not just type
+import { DisabilityType } from "@prisma/client";
 
 /**
  * User Service
@@ -27,7 +29,7 @@ export class UserService {
       search,
       role,
       status,
-      sortBy = "createdAt",
+      sortBy = "created_at",
       sortOrder = "desc",
     } = params;
 
@@ -36,7 +38,7 @@ export class UserService {
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
+        { full_name: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
       ];
     }
@@ -62,14 +64,14 @@ export class UserService {
         select: {
           id: true,
           email: true,
-          name: true,
+          full_name: true,
           role: true,
           status: true,
-          profilePicture: true,
-          emailVerified: true,
-          createdAt: true,
-          updatedAt: true,
-          lastLoginAt: true,
+          avatar_url: true,
+          email_verified: true,
+          created_at: true,
+          updated_at: true,
+          last_login: true,
         },
       }),
       prisma.user.count({ where }),
@@ -95,30 +97,31 @@ export class UserService {
       select: {
         id: true,
         email: true,
-        name: true,
+        full_name: true,
         role: true,
         status: true,
-        profilePicture: true,
+        avatar_url: true,
         bio: true,
-        phoneNumber: true,
-        dateOfBirth: true,
+        phone: true,
+        date_of_birth: true,
         address: true,
         city: true,
         country: true,
-        emailVerified: true,
-        emailVerifiedAt: true,
-        createdAt: true,
-        updatedAt: true,
-        lastLoginAt: true,
-        mentorProfile: {
+        disability_type: true,
+        email_verified: true,
+        email_verified_at: true,
+        created_at: true,
+        updated_at: true,
+        last_login: true,
+        mentor_profile: {
           select: {
             id: true,
             expertise: true,
             experience: true,
             status: true,
-            totalStudents: true,
-            totalCourses: true,
-            averageRating: true,
+            total_students: true,
+            total_courses: true,
+            average_rating: true,
           },
         },
       },
@@ -140,6 +143,7 @@ export class UserService {
     name: string;
     role?: UserRole;
     status?: UserStatus;
+    disability_type?: DisabilityType | null;
   }) {
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -158,18 +162,20 @@ export class UserService {
       data: {
         email: data.email,
         password: hashedPassword,
-        name: data.name,
+        full_name: data.name,
         role: data.role || "STUDENT",
         status: data.status || USER_STATUS.ACTIVE,
-        emailVerified: false,
+        disability_type: data.disability_type || null,
+        email_verified: false,
       },
       select: {
         id: true,
         email: true,
-        name: true,
+        full_name: true,
         role: true,
         status: true,
-        createdAt: true,
+        disability_type: true,
+        created_at: true,
       },
     });
 
@@ -184,12 +190,13 @@ export class UserService {
     data: {
       name?: string;
       bio?: string;
-      phoneNumber?: string;
-      dateOfBirth?: Date;
+      phone?: string;
+      date_of_birth?: Date;
       address?: string;
       city?: string;
       country?: string;
-      profilePicture?: string | null;
+      avatar_url?: string | null;
+      disability_type?: DisabilityType | null;
     }
   ) {
     // Check if user exists
@@ -201,35 +208,46 @@ export class UserService {
       throw new NotFoundError("User not found");
     }
 
+    // Prepare update data
+    const updateData: Prisma.UserUpdateInput = {};
+
+    if (data.name !== undefined) updateData.full_name = data.name;
+    if (data.bio !== undefined) updateData.bio = data.bio;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.date_of_birth !== undefined)
+      updateData.date_of_birth = data.date_of_birth;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.city !== undefined) updateData.city = data.city;
+    if (data.country !== undefined) updateData.country = data.country;
+    if (data.avatar_url !== undefined) updateData.avatar_url = data.avatar_url;
+    if (data.disability_type !== undefined)
+      updateData.disability_type = data.disability_type;
+
     // Update user
     const user = await prisma.user.update({
       where: { id: userId },
-      data: {
-        ...data,
-        phoneNumber: data.phoneNumber || null,
-        address: data.address || null,
-        city: data.city || null,
-        country: data.country || null,
-      },
+      data: updateData,
       select: {
         id: true,
         email: true,
-        name: true,
+        full_name: true,
         role: true,
         status: true,
-        profilePicture: true,
+        avatar_url: true,
         bio: true,
-        phoneNumber: true,
-        dateOfBirth: true,
+        phone: true,
+        date_of_birth: true,
         address: true,
         city: true,
         country: true,
-        updatedAt: true,
+        disability_type: true,
+        updated_at: true,
       },
     });
 
     return user;
   }
+
   /**
    * Update user role (admin only)
    */
@@ -248,7 +266,7 @@ export class UserService {
       select: {
         id: true,
         email: true,
-        name: true,
+        full_name: true,
         role: true,
       },
     });
@@ -272,7 +290,7 @@ export class UserService {
       select: {
         id: true,
         email: true,
-        name: true,
+        full_name: true,
         status: true,
       },
     });
@@ -379,7 +397,7 @@ export class UserService {
       }),
       prisma.user.count({
         where: {
-          createdAt: {
+          created_at: {
             gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
           },
         },
@@ -401,7 +419,7 @@ export class UserService {
     const users = await prisma.user.findMany({
       where: {
         OR: [
-          { name: { contains: query, mode: "insensitive" } },
+          { full_name: { contains: query, mode: "insensitive" } },
           { email: { contains: query, mode: "insensitive" } },
         ],
       },
@@ -409,13 +427,103 @@ export class UserService {
       select: {
         id: true,
         email: true,
-        name: true,
+        full_name: true,
         role: true,
-        profilePicture: true,
+        avatar_url: true,
       },
     });
 
     return users;
+  }
+
+  /**
+   * Update user's last login timestamp
+   */
+  async updateLastLogin(userId: string) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: { last_login: new Date() },
+    });
+  }
+
+  /**
+   * Verify user email
+   */
+  async verifyEmail(userId: string) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: {
+        email_verified: true,
+        email_verified_at: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Get users by disability type
+   */
+  async getUsersByDisabilityType(
+    disabilityType: DisabilityType,
+    page: number = 1,
+    limit: number = 10
+  ) {
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: { disability_type: disabilityType },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          email: true,
+          full_name: true,
+          role: true,
+          status: true,
+          avatar_url: true,
+          disability_type: true,
+          created_at: true,
+        },
+        orderBy: { created_at: "desc" },
+      }),
+      prisma.user.count({
+        where: { disability_type: disabilityType },
+      }),
+    ]);
+
+    return {
+      data: users,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Get disability type enum values
+   */
+  getDisabilityTypes(): DisabilityType[] {
+    return Object.values(DisabilityType);
+  }
+
+  /**
+   * Validate disability type
+   */
+  isValidDisabilityType(type: string): type is DisabilityType {
+    return Object.values(DisabilityType).includes(type as DisabilityType);
+  }
+
+  /**
+   * Convert string to DisabilityType enum
+   */
+  parseDisabilityType(type: string): DisabilityType | null {
+    if (this.isValidDisabilityType(type)) {
+      return type as DisabilityType;
+    }
+    return null;
   }
 }
 

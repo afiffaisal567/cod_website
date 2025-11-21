@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { Transporter } from "nodemailer";
 import { emailConfig } from "@/config/email.config";
 import { appConfig } from "@/config/app.config";
 
@@ -18,15 +18,14 @@ interface EmailOptions {
 /**
  * Create Nodemailer Transporter
  */
-const transporter = nodemailer.createTransporter({
+const transporter: Transporter = nodemailer.createTransport({
   host: emailConfig.smtp.host,
   port: emailConfig.smtp.port,
-  secure: emailConfig.smtp.secure, // true for 465, false for other ports
+  secure: emailConfig.smtp.secure,
   auth: {
     user: emailConfig.smtp.auth.user,
     pass: emailConfig.smtp.auth.pass,
   },
-  // Additional options for better reliability
   pool: true,
   maxConnections: 5,
   maxMessages: 100,
@@ -35,7 +34,7 @@ const transporter = nodemailer.createTransporter({
 });
 
 // Verify transporter on startup
-transporter.verify((error, success) => {
+transporter.verify((error: Error | null, success: boolean) => {
   if (error) {
     console.error("❌ Email transporter verification failed:", error);
   } else {
@@ -80,7 +79,6 @@ export class EmailService {
    * Queue email (for now, just send immediately)
    */
   async queue(options: EmailOptions, priority?: number): Promise<void> {
-    // For now, send immediately. In production, use a proper queue like BullMQ
     await sendEmail(options);
   }
 

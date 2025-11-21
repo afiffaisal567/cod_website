@@ -13,6 +13,19 @@ import {
 import { AppError } from "@/utils/error.util";
 import { HTTP_STATUS } from "@/lib/constants";
 
+// Tambahkan interface untuk Express Multer File
+interface MulterFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  destination: string;
+  filename: string;
+  path: string;
+  buffer: Buffer;
+}
+
 interface UploadResult {
   filename: string;
   path: string;
@@ -44,7 +57,7 @@ export class UploadService {
   /**
    * Upload video file
    */
-  async uploadVideo(file: Express.Multer.File): Promise<UploadResult> {
+  async uploadVideo(file: MulterFile): Promise<UploadResult> {
     // Validate file type
     if (!isVideoFile(file.mimetype)) {
       throw new AppError("Invalid video file type", HTTP_STATUS.BAD_REQUEST);
@@ -82,7 +95,7 @@ export class UploadService {
    * Upload image file
    */
   async uploadImage(
-    file: Express.Multer.File,
+    file: MulterFile,
     options?: {
       resize?: { width?: number; height?: number };
       quality?: number;
@@ -187,7 +200,7 @@ export class UploadService {
   /**
    * Upload document file
    */
-  async uploadDocument(file: Express.Multer.File): Promise<UploadResult> {
+  async uploadDocument(file: MulterFile): Promise<UploadResult> {
     // Validate file type
     if (!isDocumentFile(file.mimetype)) {
       throw new AppError("Invalid document file type", HTTP_STATUS.BAD_REQUEST);
@@ -236,9 +249,7 @@ export class UploadService {
   /**
    * Upload profile picture
    */
-  async uploadProfilePicture(
-    file: Express.Multer.File
-  ): Promise<ProfilePictureResult> {
+  async uploadProfilePicture(file: MulterFile): Promise<ProfilePictureResult> {
     // Validate and process image
     if (!isImageFile(file.mimetype)) {
       throw new AppError("Invalid image file type", HTTP_STATUS.BAD_REQUEST);

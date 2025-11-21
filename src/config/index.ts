@@ -1,17 +1,18 @@
-// src/config/index.ts
+import { databaseConfig } from "./database.config";
 import appConfig from "./app.config";
-import databaseConfig from "./database.config";
 import emailConfig from "./email.config";
 import paymentConfig from "./payment.config";
 import storageConfig from "./storage.config";
 import videoConfig from "./video.config";
 
 export type { AppConfig } from "./app.config";
-export type { DatabaseConfig } from "./database.config";
 export type { EmailConfig } from "./email.config";
 export type { PaymentConfig } from "./payment.config";
 export type { StorageConfig } from "./storage.config";
 export type { VideoConfig } from "./video.config";
+
+// Export database config type
+export type DatabaseConfig = typeof databaseConfig;
 
 export {
   appConfig,

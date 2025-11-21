@@ -22,7 +22,6 @@ export class NotificationService {
     let settings: NotificationSettings | null = null;
 
     try {
-      // Use the correct Prisma model name (notification_settings becomes notificationSettings)
       settings = await prisma.notificationSettings.findUnique({
         where: { user_id: userId },
       });
@@ -36,7 +35,7 @@ export class NotificationService {
       return; // Skip notification
     }
 
-    // Create notification - use camelCase for Prisma client
+    // Create notification
     await prisma.notification.create({
       data: {
         user_id: userId,
@@ -48,7 +47,7 @@ export class NotificationService {
       },
     });
 
-    // Send email if enabled - use camelCase for Prisma client fields
+    // Send email if enabled
     if (settings?.email_notifications) {
       await this.sendEmailNotification(userId, title, message);
     }
@@ -69,9 +68,9 @@ export class NotificationService {
       CERTIFICATE_ISSUED: "certificate_notifications",
       COMMENT_REPLY: "comment_notifications",
       REVIEW_RECEIVED: "review_notifications",
-      MENTOR_APPROVED: "course_updates", // Map to appropriate setting
-      MENTOR_REJECTED: "course_updates", // Map to appropriate setting
-      SYSTEM_ANNOUNCEMENT: "email_notifications", // Use general email setting
+      MENTOR_APPROVED: "course_updates",
+      MENTOR_REJECTED: "course_updates",
+      SYSTEM_ANNOUNCEMENT: "email_notifications",
     };
 
     const settingKey = typeMap[type];
@@ -251,6 +250,20 @@ export class NotificationService {
       `Your mentor application was not approved. Reason: ${reason}`,
       { reason }
     );
+  }
+
+  /**
+   * Create notification (alias method for backward compatibility)
+   * @deprecated Use create() instead
+   */
+  async createNotification(
+    userId: string,
+    type: NotificationType,
+    title: string,
+    message: string,
+    data?: Record<string, unknown>
+  ): Promise<void> {
+    return this.create(userId, type, title, message, data);
   }
 }
 
