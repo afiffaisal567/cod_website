@@ -1,0 +1,591 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                    String                @id @default(uuid())
+  email                 String                @unique
+  password              String
+  full_name             String
+  disability_type       DisabilityType?       // Jenis disabilitas dengan enum
+  role                  UserRole              @default(STUDENT)
+  status                UserStatus            @default(ACTIVE)
+  avatar_url            String?
+  bio                   String?
+  phone                 String?
+  date_of_birth         DateTime?
+  address               String?
+  city                  String?
+  country               String?
+  email_verified        Boolean               @default(false)
+  email_verified_at     DateTime?
+  last_login            DateTime?             // Diperbaiki dari lastLoginAt
+  created_at            DateTime              @default(now())
+  updated_at            DateTime              @updatedAt
+  activity_logs         ActivityLog[]
+  certificates          Certificate[]
+  comments              Comment[]
+  enrollments           Enrollment[]
+  mentor_profile        MentorProfile?
+  notification_settings NotificationSettings?
+  notifications         Notification[]
+  progress_records      Progress[]
+  reviews               Review[]
+  transactions          Transaction[]
+  verification_tokens   VerificationToken[]
+  wishlist              Wishlist[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([disability_type])
+  @@map("users")
+}
+
+model MentorProfile {
+  id               String       @id @default(uuid())
+  user_id          String       @unique
+  expertise        String[]
+  experience       Int
+  education        String?
+  bio              String?
+  headline         String?
+  website          String?
+  linkedin         String?
+  twitter          String?
+  portfolio        String?
+  status           MentorStatus @default(PENDING)
+  approved_at      DateTime?
+  rejected_at      DateTime?
+  rejection_reason String?
+  total_students   Int          @default(0)
+  total_courses    Int          @default(0)
+  average_rating   Float        @default(0)
+  total_reviews    Int          @default(0)
+  total_revenue    Float        @default(0)
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+  courses          Course[]
+  user             User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@map("mentor_profiles")
+}
+
+model Course {
+  id                  String        @id @default(uuid())
+  mentor_id           String
+  title               String
+  slug                String        @unique
+  description         String
+  short_description   String?
+  thumbnail           String?
+  cover_image         String?
+  category_id         String
+  level               CourseLevel   @default(ALL_LEVELS)
+  language            String        @default("id")
+  price               Float         @default(0)
+  discount_price      Float?
+  is_free             Boolean       @default(false)
+  is_premium          Boolean       @default(false)
+  is_featured         Boolean       @default(false)
+  status              CourseStatus  @default(DRAFT)
+  published_at        DateTime?
+  requirements        String[]
+  what_you_will_learn String[]
+  target_audience     String[]
+  total_duration      Int           @default(0)
+  total_lectures      Int           @default(0)
+  total_students      Int           @default(0)
+  average_rating      Float         @default(0)
+  total_reviews       Int           @default(0)
+  total_views         Int           @default(0)
+  tags                String[]
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+  certificates        Certificate[]
+  category            Category      @relation(fields: [category_id], references: [id])
+  mentor              MentorProfile @relation(fields: [mentor_id], references: [id], onDelete: Cascade)
+  enrollments         Enrollment[]
+  reviews             Review[]
+  sections            Section[]
+  transactions        Transaction[]
+  wishlist            Wishlist[]
+
+  @@index([mentor_id])
+  @@index([category_id])
+  @@index([slug])
+  @@index([status])
+  @@index([is_featured])
+  @@map("courses")
+}
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  icon        String?
+  parent_id   String?
+  order       Int        @default(0)
+  is_active   Boolean    @default(true)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  parent      Category?  @relation("CategoryToCategory", fields: [parent_id], references: [id])
+  children    Category[] @relation("CategoryToCategory")
+  courses     Course[]
+
+  @@index([slug])
+  @@index([parent_id])
+  @@map("categories")
+}
+
+model Section {
+  id          String     @id @default(uuid())
+  course_id   String
+  title       String
+  description String?
+  order       Int        @default(0)
+  duration    Int        @default(0)
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  materials   Material[]
+  course      Course     @relation(fields: [course_id], references: [id], onDelete: Cascade)
+
+  @@index([course_id])
+  @@index([order])
+  @@map("sections")
+}
+
+model Material {
+  id           String       @id @default(uuid())
+  section_id   String
+  title        String
+  description  String?
+  type         MaterialType
+  content      String?
+  video_id     String?      @unique
+  document_url String?
+  duration     Int          @default(0)
+  order        Int          @default(0)
+  is_free      Boolean      @default(false)
+  created_at   DateTime     @default(now())
+  updated_at   DateTime     @updatedAt
+  comments     Comment[]
+  section      Section      @relation(fields: [section_id], references: [id], onDelete: Cascade)
+  video        Video?       @relation(fields: [video_id], references: [id])
+  progress     Progress[]
+  resources    Resource[]
+
+  @@index([section_id])
+  @@index([video_id])
+  @@index([order])
+  @@map("materials")
+}
+
+model Resource {
+  id          String   @id @default(uuid())
+  material_id String
+  title       String
+  description String?
+  file_url    String
+  file_type   String
+  file_size   Int
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  material    Material @relation(fields: [material_id], references: [id], onDelete: Cascade)
+
+  @@index([material_id])
+  @@map("resources")
+}
+
+model Video {
+  id               String               @id @default(uuid())
+  original_name    String
+  filename         String               @unique
+  path             String
+  duration         Int                  @default(0)
+  size             Int                  @default(0)
+  mime_type        String
+  status           VideoStatus          @default(UPLOADING)
+  processing_error String?
+  thumbnail        String?
+  created_at       DateTime             @default(now())
+  updated_at       DateTime             @updatedAt
+  material         Material?
+  qualities        VideoQuality_Model[]
+
+  @@index([filename])
+  @@index([status])
+  @@map("videos")
+}
+
+model VideoQuality_Model {
+  id         String       @id @default(uuid())
+  video_id   String
+  quality    VideoQuality
+  path       String
+  size       Int
+  bitrate    String
+  resolution String
+  created_at DateTime     @default(now())
+  video      Video        @relation(fields: [video_id], references: [id], onDelete: Cascade)
+
+  @@unique([video_id, quality])
+  @@index([video_id])
+  @@map("video_qualities")
+}
+
+model Enrollment {
+  id               String           @id @default(uuid())
+  user_id          String
+  course_id        String
+  status           EnrollmentStatus @default(ACTIVE)
+  progress         Float            @default(0)
+  completed_at     DateTime?
+  expires_at       DateTime?
+  last_accessed_at DateTime?
+  certificate_id   String?          @unique
+  created_at       DateTime         @default(now())
+  updated_at       DateTime         @updatedAt
+  certificate      Certificate?     @relation(fields: [certificate_id], references: [id])
+  course           Course           @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  user             User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  progress_records Progress[]
+
+  @@unique([user_id, course_id])
+  @@index([user_id])
+  @@index([course_id])
+  @@index([status])
+  @@map("enrollments")
+}
+
+model Progress {
+  id               String     @id @default(uuid())
+  enrollment_id    String
+  material_id      String
+  user_id          String
+  is_completed     Boolean    @default(false)
+  watched_duration Int        @default(0)
+  last_position    Int        @default(0)
+  completed_at     DateTime?
+  created_at       DateTime   @default(now())
+  updated_at       DateTime   @updatedAt
+  enrollment       Enrollment @relation(fields: [enrollment_id], references: [id], onDelete: Cascade)
+  material         Material   @relation(fields: [material_id], references: [id], onDelete: Cascade)
+  user             User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([enrollment_id, material_id])
+  @@index([enrollment_id])
+  @@index([material_id])
+  @@index([user_id])
+  @@map("progress")
+}
+
+model Transaction {
+  id             String            @id @default(uuid())
+  user_id        String
+  course_id      String
+  order_id       String            @unique
+  amount         Float
+  discount       Float             @default(0)
+  total_amount   Float
+  payment_method PaymentMethod
+  status         TransactionStatus @default(PENDING)
+  payment_url    String?
+  paid_at        DateTime?
+  expired_at     DateTime?
+  refunded_at    DateTime?
+  refund_reason  String?
+  metadata       Json?
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+  course         Course            @relation(fields: [course_id], references: [id])
+  user           User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([course_id])
+  @@index([order_id])
+  @@index([status])
+  @@map("transactions")
+}
+
+model Certificate {
+  id                 String            @id @default(uuid())
+  user_id            String
+  course_id          String
+  certificate_number String            @unique
+  status             CertificateStatus @default(PENDING)
+  issued_at          DateTime?
+  revoked_at         DateTime?
+  revoke_reason      String?
+  pdf_url            String?
+  metadata           Json?
+  created_at         DateTime          @default(now())
+  updated_at         DateTime          @updatedAt
+  course             Course            @relation(fields: [course_id], references: [id])
+  user               User              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  enrollment         Enrollment?
+
+  @@index([user_id])
+  @@index([course_id])
+  @@index([certificate_number])
+  @@index([status])
+  @@map("certificates")
+}
+
+model Review {
+  id            String   @id @default(uuid())
+  user_id       String
+  course_id     String
+  rating        Int
+  comment       String?
+  is_anonymous  Boolean  @default(false)
+  helpful_count Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  course        Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, course_id])
+  @@index([course_id])
+  @@index([rating])
+  @@map("reviews")
+}
+
+model Comment {
+  id          String    @id @default(uuid())
+  user_id     String
+  material_id String
+  parent_id   String?
+  content     String
+  is_edited   Boolean   @default(false)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  material    Material  @relation(fields: [material_id], references: [id], onDelete: Cascade)
+  parent      Comment?  @relation("CommentToComment", fields: [parent_id], references: [id])
+  replies     Comment[] @relation("CommentToComment")
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([material_id])
+  @@index([user_id])
+  @@index([parent_id])
+  @@map("comments")
+}
+
+model Wishlist {
+  id         String   @id @default(uuid())
+  user_id    String
+  course_id  String
+  created_at DateTime @default(now())
+  course     Course   @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, course_id])
+  @@index([user_id])
+  @@index([course_id])
+  @@map("wishlist")
+}
+
+model Notification {
+  id         String             @id @default(uuid())
+  user_id    String
+  type       NotificationType
+  title      String
+  message    String
+  status     NotificationStatus @default(UNREAD)
+  data       Json?
+  read_at    DateTime?
+  created_at DateTime           @default(now())
+  updated_at DateTime           @updatedAt
+  user       User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([status])
+  @@index([type])
+  @@map("notifications")
+}
+
+model NotificationSettings {
+  id                        String   @id @default(uuid())
+  user_id                   String   @unique
+  email_notifications       Boolean  @default(true)
+  push_notifications        Boolean  @default(true)
+  course_updates            Boolean  @default(true)
+  payment_notifications     Boolean  @default(true)
+  certificate_notifications Boolean  @default(true)
+  comment_notifications     Boolean  @default(true)
+  review_notifications      Boolean  @default(true)
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+  user                      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("notification_settings")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  user_id     String
+  action      String
+  entity_type String?
+  entity_id   String?
+  metadata    Json?
+  ip_address  String?
+  user_agent  String?
+  created_at  DateTime @default(now())
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([action])
+  @@index([created_at])
+  @@map("activity_logs")
+}
+
+model SystemSetting {
+  id         String   @id @default(uuid())
+  key        String   @unique
+  value      String
+  type       String   @default("string")
+  category   String   @default("general")
+  is_public  Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([key])
+  @@index([category])
+  @@map("system_settings")
+}
+
+model VerificationToken {
+  id         String    @id @default(uuid())
+  user_id    String
+  token      String    @unique
+  type       String
+  expires_at DateTime
+  used_at    DateTime?
+  created_at DateTime  @default(now())
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token])
+  @@index([type])
+  @@map("verification_tokens")
+}
+
+// Enum untuk jenis disabilitas (diurutkan A-Z)
+enum DisabilityType {
+  BUTA_WARNA      // Buta Warna
+  DISLEKSIA       // Disleksia
+  KOGNITIF        // Disabilitas Kognitif
+  LOW_VISION      // Low Vision
+  MENTOR          // Mentor (tanpa disabilitas)
+  MOTORIK         // Disabilitas Motorik
+  TUNARUNGU       // Tunarungu
+}
+
+enum UserRole {
+  ADMIN
+  MENTOR
+  STUDENT
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum MentorStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum CourseStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ALL_LEVELS
+}
+
+enum MaterialType {
+  VIDEO
+  DOCUMENT
+  QUIZ
+  ASSIGNMENT
+}
+
+enum VideoStatus {
+  UPLOADING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum VideoQuality {
+  Q360P
+  Q480P
+  Q720P
+  Q1080P
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  E_WALLET
+  VIRTUAL_ACCOUNT
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum CertificateStatus {
+  PENDING
+  ISSUED
+  REVOKED
+}
+
+enum NotificationType {
+  COURSE_ENROLLMENT
+  COURSE_UPDATE
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  CERTIFICATE_ISSUED
+  COMMENT_REPLY
+  REVIEW_RECEIVED
+  MENTOR_APPROVED
+  MENTOR_REJECTED
+  SYSTEM_ANNOUNCEMENT
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
