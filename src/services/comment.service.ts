@@ -48,13 +48,11 @@ export class CommentService {
 
     // Check if user is enrolled (unless it's a free preview)
     if (!material.is_free) {
-      // Changed from isFree to is_free
       const enrollment = await prisma.enrollment.findUnique({
         where: {
           user_id_course_id: {
-            // Changed from userId_courseId to user_id_course_id
-            user_id: userId, // Changed from userId to user_id
-            course_id: material.section.course.id, // Changed from courseId to course_id
+            user_id: userId,
+            course_id: material.section.course.id,
           },
         },
       });
@@ -75,7 +73,6 @@ export class CommentService {
       }
 
       if (parentComment.material_id !== materialId) {
-        // Changed from materialId to material_id
         throw new ForbiddenError(
           "Parent comment belongs to different material"
         );
@@ -85,17 +82,17 @@ export class CommentService {
     // Create comment
     const comment = await prisma.comment.create({
       data: {
-        user_id: userId, // Changed from userId to user_id
-        material_id: materialId, // Changed from materialId to material_id
+        user_id: userId,
+        material_id: materialId,
         content,
-        parent_id: parentId, // Changed from parentId to parent_id
+        parent_id: parentId,
       },
       include: {
         user: {
           select: {
             id: true,
-            full_name: true, // Changed from name to full_name
-            avatar_url: true, // Changed from profilePicture to avatar_url
+            full_name: true,
+            avatar_url: true,
             role: true,
           },
         },
@@ -127,14 +124,14 @@ export class CommentService {
       limit = 20,
       sortBy = "created_at",
       sortOrder = "desc",
-    } = options; // Changed sortBy to created_at
+    } = options;
 
     const skip = (page - 1) * limit;
 
     // Only get top-level comments (no parent)
     const where: Prisma.CommentWhereInput = {
-      material_id: materialId, // Changed from materialId to material_id
-      parent_id: null, // Changed from parentId to parent_id
+      material_id: materialId,
+      parent_id: null,
     };
 
     const [comments, total] = await Promise.all([
@@ -147,20 +144,20 @@ export class CommentService {
           user: {
             select: {
               id: true,
-              full_name: true, // Changed from name to full_name
-              avatar_url: true, // Changed from profilePicture to avatar_url
+              full_name: true,
+              avatar_url: true,
               role: true,
             },
           },
           replies: {
             take: 3, // Show first 3 replies
-            orderBy: { created_at: "asc" }, // Changed from createdAt to created_at
+            orderBy: { created_at: "asc" },
             include: {
               user: {
                 select: {
                   id: true,
-                  full_name: true, // Changed from name to full_name
-                  avatar_url: true, // Changed from profilePicture to avatar_url
+                  full_name: true,
+                  avatar_url: true,
                   role: true,
                 },
               },
@@ -197,8 +194,8 @@ export class CommentService {
         user: {
           select: {
             id: true,
-            full_name: true, // Changed from name to full_name
-            avatar_url: true, // Changed from profilePicture to avatar_url
+            full_name: true,
+            avatar_url: true,
             role: true,
           },
         },
@@ -214,7 +211,7 @@ export class CommentService {
             content: true,
             user: {
               select: {
-                full_name: true, // Changed from name to full_name
+                full_name: true,
               },
             },
           },
@@ -249,22 +246,22 @@ export class CommentService {
 
     const [replies, total] = await Promise.all([
       prisma.comment.findMany({
-        where: { parent_id: commentId }, // Changed from parentId to parent_id
+        where: { parent_id: commentId },
         skip,
         take: limit,
-        orderBy: { created_at: "asc" }, // Changed from createdAt to created_at
+        orderBy: { created_at: "asc" },
         include: {
           user: {
             select: {
               id: true,
-              full_name: true, // Changed from name to full_name
-              avatar_url: true, // Changed from profilePicture to avatar_url
+              full_name: true,
+              avatar_url: true,
               role: true,
             },
           },
         },
       }),
-      prisma.comment.count({ where: { parent_id: commentId } }), // Changed from parentId to parent_id
+      prisma.comment.count({ where: { parent_id: commentId } }),
     ]);
 
     return {
@@ -297,7 +294,6 @@ export class CommentService {
 
     // Check permission (owner or admin)
     if (comment.user_id !== userId && userRole !== USER_ROLES.ADMIN) {
-      // Changed from userId to user_id
       throw new ForbiddenError("You can only edit your own comments");
     }
 
@@ -305,14 +301,14 @@ export class CommentService {
       where: { id: commentId },
       data: {
         content: data.content,
-        is_edited: true, // Changed from isEdited to is_edited
+        is_edited: true,
       },
       include: {
         user: {
           select: {
             id: true,
-            full_name: true, // Changed from name to full_name
-            avatar_url: true, // Changed from profilePicture to avatar_url
+            full_name: true,
+            avatar_url: true,
             role: true,
           },
         },
@@ -339,7 +335,6 @@ export class CommentService {
 
     // Check permission (owner or admin)
     if (comment.user_id !== userId && userRole !== USER_ROLES.ADMIN) {
-      // Changed from userId to user_id
       throw new ForbiddenError("You can only delete your own comments");
     }
 
@@ -349,7 +344,7 @@ export class CommentService {
         where: { id: commentId },
         data: {
           content: "[Comment deleted by user]",
-          is_edited: true, // Changed from isEdited to is_edited
+          is_edited: true,
         },
       });
     } else {
@@ -382,16 +377,6 @@ export class CommentService {
       reason,
     });
 
-    // You can add a Report model in the future
-    // await prisma.report.create({
-    //   data: {
-    //     commentId,
-    //     reportedBy: userId,
-    //     reason,
-    //     status: 'PENDING',
-    //   },
-    // });
-
     return {
       commentId,
       reported: true,
@@ -406,14 +391,14 @@ export class CommentService {
     const [totalComments, totalReplies] = await Promise.all([
       prisma.comment.count({
         where: {
-          material_id: materialId, // Changed from materialId to material_id
-          parent_id: null, // Changed from parentId to parent_id
+          material_id: materialId,
+          parent_id: null,
         },
       }),
       prisma.comment.count({
         where: {
-          material_id: materialId, // Changed from materialId to material_id
-          parent_id: { not: null }, // Changed from parentId to parent_id
+          material_id: materialId,
+          parent_id: { not: null },
         },
       }),
     ]);
@@ -440,10 +425,10 @@ export class CommentService {
 
     const [comments, total] = await Promise.all([
       prisma.comment.findMany({
-        where: { user_id: userId }, // Changed from userId to user_id
+        where: { user_id: userId },
         skip,
         take: limit,
-        orderBy: { created_at: "desc" }, // Changed from createdAt to created_at
+        orderBy: { created_at: "desc" },
         include: {
           material: {
             select: {
@@ -474,7 +459,7 @@ export class CommentService {
           },
         },
       }),
-      prisma.comment.count({ where: { user_id: userId } }), // Changed from userId to user_id
+      prisma.comment.count({ where: { user_id: userId } }),
     ]);
 
     return {
@@ -507,7 +492,7 @@ export class CommentService {
         contains: query,
         mode: "insensitive",
       },
-      ...(materialId && { material_id: materialId }), // Changed from materialId to material_id
+      ...(materialId && { material_id: materialId }),
     };
 
     const [comments, total] = await Promise.all([
@@ -515,13 +500,13 @@ export class CommentService {
         where,
         skip,
         take: limit,
-        orderBy: { created_at: "desc" }, // Changed from createdAt to created_at
+        orderBy: { created_at: "desc" },
         include: {
           user: {
             select: {
               id: true,
-              full_name: true, // Changed from name to full_name
-              avatar_url: true, // Changed from profilePicture to avatar_url
+              full_name: true,
+              avatar_url: true,
             },
           },
           material: {
