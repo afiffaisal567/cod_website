@@ -1,7 +1,7 @@
-import prisma from '@/lib/prisma';
-import emailService from './email.service';
-import type { NotificationType, Notification } from '@prisma/client';
-import type { Prisma } from '@prisma/client';
+import prisma from "@/lib/prisma";
+import emailService from "./email.service";
+import type { NotificationType, Notification } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 
 // Define UserPreferences interface if not exported from Prisma
 interface UserPreferences {
@@ -36,7 +36,9 @@ export class NotificationService {
       // Try userPreferences first
       const userPrefsTable = prisma as {
         userPreferences?: {
-          findUnique: (args: { where: { userId: string } }) => Promise<UserPreferences | null>;
+          findUnique: (args: {
+            where: { userId: string };
+          }) => Promise<UserPreferences | null>;
         };
       };
       if (userPrefsTable.userPreferences) {
@@ -49,7 +51,9 @@ export class NotificationService {
       try {
         const notifPrefsTable = prisma as {
           notificationPreferences?: {
-            findUnique: (args: { where: { userId: string } }) => Promise<UserPreferences | null>;
+            findUnique: (args: {
+              where: { userId: string };
+            }) => Promise<UserPreferences | null>;
           };
         };
         if (notifPrefsTable.notificationPreferences) {
@@ -76,7 +80,7 @@ export class NotificationService {
         title,
         message,
         data: (data || {}) as Prisma.JsonObject,
-        status: 'UNREAD',
+        status: "UNREAD",
       },
     });
 
@@ -89,15 +93,18 @@ export class NotificationService {
   /**
    * Check if notification type is enabled
    */
-  private isNotificationEnabled(settings: UserPreferences, type: NotificationType): boolean {
+  private isNotificationEnabled(
+    settings: UserPreferences,
+    type: NotificationType
+  ): boolean {
     const typeMap: Record<string, keyof UserPreferences> = {
-      COURSE_ENROLLMENT: 'courseUpdates',
-      COURSE_UPDATE: 'courseUpdates',
-      PAYMENT_SUCCESS: 'paymentNotifications',
-      PAYMENT_FAILED: 'paymentNotifications',
-      CERTIFICATE_ISSUED: 'certificateNotifications',
-      COMMENT_REPLY: 'commentNotifications',
-      REVIEW_RECEIVED: 'reviewNotifications',
+      COURSE_ENROLLMENT: "courseUpdates",
+      COURSE_UPDATE: "courseUpdates",
+      PAYMENT_SUCCESS: "paymentNotifications",
+      PAYMENT_FAILED: "paymentNotifications",
+      CERTIFICATE_ISSUED: "certificateNotifications",
+      COMMENT_REPLY: "commentNotifications",
+      REVIEW_RECEIVED: "reviewNotifications",
     };
 
     const settingKey = typeMap[type];
@@ -131,17 +138,20 @@ export class NotificationService {
         });
       }
     } catch (error) {
-      console.error('Failed to send email notification:', error);
+      console.error("Failed to send email notification:", error);
     }
   }
 
   /**
    * Get user notifications
    */
-  async getUserNotifications(userId: string, limit: number = 10): Promise<Notification[]> {
+  async getUserNotifications(
+    userId: string,
+    limit: number = 10
+  ): Promise<Notification[]> {
     return prisma.notification.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       take: limit,
     });
   }
@@ -153,7 +163,7 @@ export class NotificationService {
     await prisma.notification.update({
       where: { id: notificationId },
       data: {
-        status: 'READ',
+        status: "READ",
         readAt: new Date(),
       },
     });
@@ -166,10 +176,10 @@ export class NotificationService {
     await prisma.notification.updateMany({
       where: {
         userId,
-        status: 'UNREAD',
+        status: "UNREAD",
       },
       data: {
-        status: 'READ',
+        status: "READ",
         readAt: new Date(),
       },
     });
@@ -191,7 +201,7 @@ export class NotificationService {
     return prisma.notification.count({
       where: {
         userId,
-        status: 'UNREAD',
+        status: "UNREAD",
       },
     });
   }
@@ -208,7 +218,7 @@ export class NotificationService {
         createdAt: {
           lt: cutoffDate,
         },
-        status: 'READ',
+        status: "READ",
       },
     });
 
@@ -216,21 +226,28 @@ export class NotificationService {
   }
 
   // Convenience methods for common notifications
-  async notifyCourseEnrollment(userId: string, courseName: string): Promise<void> {
+  async notifyCourseEnrollment(
+    userId: string,
+    courseName: string
+  ): Promise<void> {
     await this.create(
       userId,
-      'COURSE_ENROLLMENT',
-      'Course Enrollment',
+      "COURSE_ENROLLMENT",
+      "Course Enrollment",
       `You've successfully enrolled in ${courseName}`,
       { courseName }
     );
   }
 
-  async notifyPaymentSuccess(userId: string, courseName: string, amount: number): Promise<void> {
+  async notifyPaymentSuccess(
+    userId: string,
+    courseName: string,
+    amount: number
+  ): Promise<void> {
     await this.create(
       userId,
-      'PAYMENT_SUCCESS',
-      'Payment Successful',
+      "PAYMENT_SUCCESS",
+      "Payment Successful",
       `Your payment of Rp${amount.toLocaleString()} for ${courseName} was successful`,
       { courseName, amount }
     );
@@ -243,8 +260,8 @@ export class NotificationService {
   ): Promise<void> {
     await this.create(
       userId,
-      'CERTIFICATE_ISSUED',
-      'Certificate Ready',
+      "CERTIFICATE_ISSUED",
+      "Certificate Ready",
       `Your certificate for ${courseName} is ready to download`,
       { courseName, certificateId }
     );
@@ -253,17 +270,17 @@ export class NotificationService {
   async notifyMentorApproved(userId: string): Promise<void> {
     await this.create(
       userId,
-      'MENTOR_APPROVED',
-      'Mentor Application Approved',
-      'Congratulations! Your mentor application has been approved'
+      "MENTOR_APPROVED",
+      "Mentor Application Approved",
+      "Congratulations! Your mentor application has been approved"
     );
   }
 
   async notifyMentorRejected(userId: string, reason: string): Promise<void> {
     await this.create(
       userId,
-      'MENTOR_REJECTED',
-      'Mentor Application Update',
+      "MENTOR_REJECTED",
+      "Mentor Application Update",
       `Your mentor application was not approved. Reason: ${reason}`,
       { reason }
     );

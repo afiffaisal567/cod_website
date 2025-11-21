@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { rateLimitResponse } from '@/utils/response.util';
-import { RATE_LIMIT } from '@/lib/constants';
+import { NextRequest, NextResponse } from "next/server";
+import { rateLimitResponse } from "@/utils/response.util";
+import { RATE_LIMIT } from "@/lib/constants";
 
 // In-memory store for rate limiting (use Redis in production)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -26,7 +26,7 @@ export function rateLimit(options?: {
       const isAllowed = checkRateLimit(clientId, windowMs, maxRequests);
 
       if (!isAllowed) {
-        return rateLimitResponse('Too many requests. Please try again later.');
+        return rateLimitResponse("Too many requests. Please try again later.");
       }
 
       // Proceed to handler
@@ -40,14 +40,14 @@ export function rateLimit(options?: {
  */
 function getClientIdentifier(request: NextRequest): string {
   // Try to get user ID from authenticated request
-  const userId = request.headers.get('x-user-id');
+  const userId = request.headers.get("x-user-id");
   if (userId) {
     return `user:${userId}`;
   }
 
   // Fall back to IP address
-  const forwarded = request.headers.get('x-forwarded-for');
-  const ip = forwarded ? forwarded.split(',')[0] : 'unknown';
+  const forwarded = request.headers.get("x-forwarded-for");
+  const ip = forwarded ? forwarded.split(",")[0] : "unknown";
 
   return `ip:${ip}`;
 }
@@ -55,7 +55,11 @@ function getClientIdentifier(request: NextRequest): string {
 /**
  * Check if request is within rate limit
  */
-function checkRateLimit(clientId: string, windowMs: number, maxRequests: number): boolean {
+function checkRateLimit(
+  clientId: string,
+  windowMs: number,
+  maxRequests: number
+): boolean {
   const now = Date.now();
   const clientData = rateLimitStore.get(clientId);
 
@@ -83,8 +87,9 @@ function checkRateLimit(clientId: string, windowMs: number, maxRequests: number)
  */
 export function cleanupRateLimitStore(): void {
   const now = Date.now();
+  const entries = Array.from(rateLimitStore.entries());
 
-  for (const [clientId, data] of rateLimitStore.entries()) {
+  for (const [clientId, data] of entries) {
     if (now > data.resetTime) {
       rateLimitStore.delete(clientId);
     }
@@ -92,7 +97,7 @@ export function cleanupRateLimitStore(): void {
 }
 
 // Cleanup every 5 minutes
-if (typeof window === 'undefined') {
+if (typeof window === "undefined") {
   setInterval(cleanupRateLimitStore, 5 * 60 * 1000);
 }
 

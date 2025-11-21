@@ -5,7 +5,20 @@ export * from "./common.types";
 export * from "./api.types";
 
 // Auth Types
-export * from "./auth.types";
+export type {
+  JWTPayload,
+  TokenPair,
+  LoginCredentials,
+  RegistrationData,
+  AuthResponse,
+  PasswordResetRequest,
+  PasswordReset,
+  ChangePassword,
+  EmailVerification,
+  SessionData,
+} from "./auth.types";
+// Rename UserProfile from auth.types to avoid conflict
+export type { UserProfile as AuthUserProfile } from "./auth.types";
 
 // User Types
 export * from "./user.types";
@@ -25,5 +38,5 @@ export * from "./certificate.types";
 // Notification Types
 export * from "./notification.types";
 
-// Video Types (from Day 7)
+// Video Types
 export * from "./video.types";

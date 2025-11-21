@@ -1,7 +1,64 @@
-import { sendEmail, EmailOptions } from '@/lib/email';
-import { emailQueue } from '@/lib/queue';
-import { emailConfig } from '@/config/email.config';
-import { appConfig } from '@/config/app.config';
+import { sendEmail } from "@/lib/email";
+import { emailConfig } from "@/config/email.config";
+import { appConfig } from "@/config/app.config";
+
+// Define EmailOptions locally to avoid type issues
+interface EmailOptions {
+  to: string | string[];
+  subject: string;
+  text?: string;
+  html?: string;
+  attachments?: Array<{
+    filename: string;
+    content?: string | Buffer;
+    path?: string;
+  }>;
+}
+
+/**
+ * Simple in-memory email queue
+ */
+class EmailQueue {
+  private queue: Array<{ data: EmailOptions; priority: number }> = [];
+  private processing = false;
+
+  async add(
+    jobName: string,
+    data: EmailOptions,
+    options?: { priority?: number }
+  ) {
+    this.queue.push({
+      data,
+      priority: options?.priority || 5,
+    });
+
+    // Sort by priority (lower number = higher priority)
+    this.queue.sort((a, b) => a.priority - b.priority);
+
+    if (!this.processing) {
+      this.processQueue();
+    }
+  }
+
+  private async processQueue() {
+    this.processing = true;
+    while (this.queue.length > 0) {
+      const job = this.queue.shift();
+      if (job) {
+        try {
+          await sendEmail(job.data);
+          console.log("✅ Email sent:", job.data.subject);
+        } catch (error) {
+          console.error("❌ Email send failed:", error);
+        }
+      }
+    }
+    this.processing = false;
+  }
+}
+
+// Create email queue instance
+const emailQueue = new EmailQueue();
 
 /**
  * Email Service
@@ -18,9 +75,7 @@ export class EmailService {
    * Queue email for background sending
    */
   async queue(options: EmailOptions, priority?: number): Promise<void> {
-    await emailQueue.add('send-email', options as Record<string, unknown>, {
-      priority: priority || 5,
-    });
+    await emailQueue.add("send-email", options, { priority: priority || 5 });
   }
 
   /**
@@ -39,7 +94,11 @@ export class EmailService {
   /**
    * Send email verification
    */
-  async sendVerificationEmail(to: string, userName: string, token: string): Promise<void> {
+  async sendVerificationEmail(
+    to: string,
+    userName: string,
+    token: string
+  ): Promise<void> {
     const verificationUrl = `${appConfig.url}/verify-email?token=${token}`;
     const html = this.generateVerificationTemplate(userName, verificationUrl);
 
@@ -53,7 +112,11 @@ export class EmailService {
   /**
    * Send password reset email
    */
-  async sendPasswordResetEmail(to: string, userName: string, token: string): Promise<void> {
+  async sendPasswordResetEmail(
+    to: string,
+    userName: string,
+    token: string
+  ): Promise<void> {
     const resetUrl = `${appConfig.url}/reset-password?token=${token}`;
     const html = this.generatePasswordResetTemplate(userName, resetUrl);
 
@@ -67,7 +130,11 @@ export class EmailService {
   /**
    * Send course enrollment confirmation
    */
-  async sendCourseEnrollmentEmail(to: string, userName: string, courseName: string): Promise<void> {
+  async sendCourseEnrollmentEmail(
+    to: string,
+    userName: string,
+    courseName: string
+  ): Promise<void> {
     const html = this.generateCourseEnrollmentTemplate(userName, courseName);
 
     await this.queue({
@@ -86,7 +153,11 @@ export class EmailService {
     courseName: string,
     certificateUrl: string
   ): Promise<void> {
-    const html = this.generateCertificateTemplate(userName, courseName, certificateUrl);
+    const html = this.generateCertificateTemplate(
+      userName,
+      courseName,
+      certificateUrl
+    );
 
     await this.queue({
       to,
@@ -104,7 +175,11 @@ export class EmailService {
     amount: number,
     courseName: string
   ): Promise<void> {
-    const html = this.generatePaymentSuccessTemplate(userName, amount, courseName);
+    const html = this.generatePaymentSuccessTemplate(
+      userName,
+      amount,
+      courseName
+    );
 
     await this.queue({
       to,
@@ -129,7 +204,11 @@ export class EmailService {
   /**
    * Send mentor application rejected email
    */
-  async sendMentorRejectedEmail(to: string, userName: string, reason: string): Promise<void> {
+  async sendMentorRejectedEmail(
+    to: string,
+    userName: string,
+    reason: string
+  ): Promise<void> {
     const html = this.generateMentorRejectedTemplate(userName, reason);
 
     await this.queue({
@@ -175,7 +254,10 @@ export class EmailService {
     `;
   }
 
-  private generateVerificationTemplate(userName: string, verificationUrl: string): string {
+  private generateVerificationTemplate(
+    userName: string,
+    verificationUrl: string
+  ): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -206,7 +288,10 @@ export class EmailService {
     `;
   }
 
-  private generatePasswordResetTemplate(userName: string, resetUrl: string): string {
+  private generatePasswordResetTemplate(
+    userName: string,
+    resetUrl: string
+  ): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -238,7 +323,10 @@ export class EmailService {
     `;
   }
 
-  private generateCourseEnrollmentTemplate(userName: string, courseName: string): string {
+  private generateCourseEnrollmentTemplate(
+    userName: string,
+    courseName: string
+  ): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -364,7 +452,10 @@ export class EmailService {
     `;
   }
 
-  private generateMentorRejectedTemplate(userName: string, reason: string): string {
+  private generateMentorRejectedTemplate(
+    userName: string,
+    reason: string
+  ): string {
     return `
       <!DOCTYPE html>
       <html>
