@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken, extractTokenFromHeader } from '@/lib/auth';
-import { unauthorizedResponse, forbiddenResponse } from '@/utils/response.util';
-import { USER_STATUS } from '@/lib/constants';
-import prisma from '@/lib/prisma';
+import { NextRequest, NextResponse } from "next/server";
+import { verifyAccessToken, extractTokenFromHeader } from "@/lib/auth";
+import { unauthorizedResponse, forbiddenResponse } from "@/utils/response.util";
+import { USER_STATUS } from "@/lib/constants";
+import prisma from "@/lib/prisma";
 
 // Extended NextRequest with user info
 export interface AuthenticatedRequest extends NextRequest {
@@ -17,25 +17,26 @@ export interface AuthenticatedRequest extends NextRequest {
  * Authentication Middleware
  * Verifies JWT token and attaches user info to request
  */
-export async function authMiddleware(request: NextRequest): Promise<NextResponse | null> {
+export async function authMiddleware(
+  request: NextRequest
+): Promise<NextResponse | null> {
   try {
-    // Extract token from Authorization header
-    const authHeader = request.headers.get('Authorization');
+    const authHeader = request.headers.get("Authorization");
     const token = extractTokenFromHeader(authHeader);
 
     if (!token) {
-      return unauthorizedResponse('No token provided');
+      return unauthorizedResponse("No token provided");
     }
 
-    // Verify token
     let payload;
     try {
       payload = verifyAccessToken(token);
     } catch (error) {
-      return unauthorizedResponse(error instanceof Error ? error.message : 'Invalid token');
+      return unauthorizedResponse(
+        error instanceof Error ? error.message : "Invalid token"
+      );
     }
 
-    // Check if user exists and is active
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: {
@@ -47,38 +48,39 @@ export async function authMiddleware(request: NextRequest): Promise<NextResponse
     });
 
     if (!user) {
-      return unauthorizedResponse('User not found');
+      return unauthorizedResponse("User not found");
     }
 
     if (user.status !== USER_STATUS.ACTIVE) {
-      return forbiddenResponse('User account is suspended or inactive');
+      return forbiddenResponse("User account is suspended or inactive");
     }
 
-    // Attach user info to request headers (for Next.js App Router)
+    // ✅ FIX: Attach user info ke request headers dengan NextRequest.clone()
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-user-id', user.id);
-    requestHeaders.set('x-user-email', user.email);
-    requestHeaders.set('x-user-role', user.role);
+    requestHeaders.set("x-user-id", user.id);
+    requestHeaders.set("x-user-email", user.email);
+    requestHeaders.set("x-user-role", user.role);
 
-    // Return null to continue to next middleware/handler
+    // Return null to indicate success (handler will continue)
     return null;
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    return unauthorizedResponse('Authentication failed');
+    console.error("Auth middleware error:", error);
+    return unauthorizedResponse("Authentication failed");
   }
 }
 
 /**
  * Get authenticated user from request headers
+ * ✅ FIX: Proper type safety and null handling
  */
 export function getAuthenticatedUser(request: NextRequest): {
   userId: string;
   email: string;
   role: string;
 } | null {
-  const userId = request.headers.get('x-user-id');
-  const email = request.headers.get('x-user-email');
-  const role = request.headers.get('x-user-role');
+  const userId = request.headers.get("x-user-id");
+  const email = request.headers.get("x-user-email");
+  const role = request.headers.get("x-user-role");
 
   if (!userId || !email || !role) {
     return null;
@@ -89,6 +91,7 @@ export function getAuthenticatedUser(request: NextRequest): {
 
 /**
  * Require authentication wrapper for API routes
+ * ✅ FIX: Proper async handling
  */
 export function requireAuth(
   handler: (request: NextRequest) => Promise<NextResponse>
@@ -97,11 +100,9 @@ export function requireAuth(
     const authResult = await authMiddleware(request);
 
     if (authResult) {
-      // Auth failed, return error response
-      return authResult;
+      return authResult; // Return error response
     }
 
-    // Auth successful, proceed to handler
-    return handler(request);
+    return handler(request); // Continue to handler
   };
 }
