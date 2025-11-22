@@ -1,7 +1,7 @@
-import { storage } from '@/lib/storage';
-import { storageConfig } from '@/config/storage.config';
-import path from 'path';
-import fs from 'fs/promises';
+import { storage } from "@/lib/storage";
+import { storageConfig } from "@/config/storage.config";
+import path from "path";
+import fs from "fs/promises";
 
 interface DirectoryStats {
   size: number;
@@ -43,7 +43,7 @@ export class StorageService {
     };
 
     // Calculate stats for each directory
-    for (const type of ['videos', 'images', 'documents'] as const) {
+    for (const type of ["videos", "images", "documents"] as const) {
       const dirPath = path.join(storageConfig.local.basePath, type);
       const dirStats = await this.getDirectoryStats(dirPath);
 
@@ -89,7 +89,7 @@ export class StorageService {
    * Clean up temp files
    */
   async cleanupTempFiles(): Promise<CleanupResult> {
-    const tempDir = path.join(storageConfig.local.basePath, 'videos', 'temp');
+    const tempDir = path.join(storageConfig.local.basePath, "videos", "temp");
     const maxAge = storageConfig.cleanup.tempFileMaxAge;
     const now = Date.now();
 
@@ -107,12 +107,12 @@ export class StorageService {
         const fileAge = now - stats.mtimeMs;
         if (fileAge > maxAge) {
           freedSpace += stats.size;
-          await storage.delete(path.join('videos', 'temp', file));
+          await storage.delete(path.join("videos", "temp", file));
           deletedCount++;
         }
       }
     } catch (error) {
-      console.error('Error cleaning temp files:', error);
+      console.error("Error cleaning temp files:", error);
     }
 
     return { deletedCount, freedSpace };
@@ -138,19 +138,19 @@ export class StorageService {
   async initializeStorage(): Promise<void> {
     const basePath = storageConfig.local.basePath;
     const directories = [
-      'videos/originals',
-      'videos/processed/360p',
-      'videos/processed/480p',
-      'videos/processed/720p',
-      'videos/processed/1080p',
-      'videos/thumbnails',
-      'videos/temp',
-      'images/profiles',
-      'images/courses',
-      'images/certificates',
-      'documents/pdfs',
-      'documents/presentations',
-      'documents/others',
+      "videos/originals",
+      "videos/processed/360p",
+      "videos/processed/480p",
+      "videos/processed/720p",
+      "videos/processed/1080p",
+      "videos/thumbnails",
+      "videos/temp",
+      "images/profiles",
+      "images/courses",
+      "images/certificates",
+      "documents/pdfs",
+      "documents/presentations",
+      "documents/others",
     ];
 
     for (const dir of directories) {
@@ -158,7 +158,7 @@ export class StorageService {
       await fs.mkdir(dirPath, { recursive: true });
     }
 
-    console.log('✅ Storage directories initialized');
+    console.log("✅ Storage directories initialized");
   }
 
   /**

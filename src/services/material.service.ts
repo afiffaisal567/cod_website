@@ -1,7 +1,6 @@
 import prisma from "@/lib/prisma";
 import { NotFoundError, ForbiddenError, AppError } from "@/utils/error.util";
 import { HTTP_STATUS, USER_ROLES } from "@/lib/constants";
-import type { MaterialType } from "@prisma/client";
 
 /**
  * Material Creation Data
@@ -10,7 +9,7 @@ interface CreateMaterialData {
   section_id: string;
   title: string;
   description?: string;
-  type: MaterialType;
+  type: string;
   content?: string;
   document_url?: string;
   duration?: number;
@@ -626,8 +625,8 @@ export class MaterialService {
     });
 
     const totalMaterials = materials.length;
-    const completedMaterials = materials.filter((m) =>
-      m.progress.some((p) => p.is_completed)
+    const completedMaterials = materials.filter((m: any) =>
+      m.progress.some((p: any) => p.is_completed)
     ).length;
 
     return {
@@ -666,7 +665,7 @@ export class MaterialService {
     });
 
     const total_duration = materials.reduce(
-      (sum, material) => sum + material.duration,
+      (sum: number, material: any) => sum + material.duration,
       0
     );
 
@@ -698,7 +697,7 @@ export class MaterialService {
     });
 
     const total_duration = sections.reduce(
-      (sum, section) => sum + section.duration,
+      (sum: number, section: any) => sum + section.duration,
       0
     );
 

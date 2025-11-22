@@ -1,6 +1,9 @@
-import { ZodError } from 'zod';
-import { Prisma } from '@prisma/client';
-import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants';
+import { ZodError } from "zod";
+import {
+  PrismaClientKnownRequestError,
+  PrismaClientValidationError,
+} from "@prisma/client/runtime/library";
+import { HTTP_STATUS, ERROR_MESSAGES } from "@/lib/constants";
 
 // Custom Error Classes
 export class AppError extends Error {
@@ -17,7 +20,7 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string = 'Validation failed') {
+  constructor(message: string = "Validation failed") {
     super(message, HTTP_STATUS.UNPROCESSABLE_ENTITY);
   }
 }
@@ -41,13 +44,13 @@ export class NotFoundError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(message: string = 'Resource already exists') {
+  constructor(message: string = "Resource already exists") {
     super(message, HTTP_STATUS.CONFLICT);
   }
 }
 
 export class RateLimitError extends AppError {
-  constructor(message: string = ERROR_MESSAGES.RATE_LIMIT_EXCEEDED) {
+  constructor(message: string = "Too many requests") {
     super(message, HTTP_STATUS.TOO_MANY_REQUESTS);
   }
 }
@@ -59,7 +62,7 @@ export function formatZodError(error: ZodError): Record<string, string[]> {
   const formattedErrors: Record<string, string[]> = {};
 
   error.issues.forEach((issue) => {
-    const path = issue.path.join('.');
+    const path = issue.path.join(".");
     if (!formattedErrors[path]) {
       formattedErrors[path] = [];
     }
@@ -72,53 +75,67 @@ export function formatZodError(error: ZodError): Record<string, string[]> {
 /**
  * Format Prisma Errors
  */
-export function formatPrismaError(error: unknown): { message: string; statusCode: number } {
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+export function formatPrismaError(error: unknown): {
+  message: string;
+  statusCode: number;
+} {
+  // Check for Prisma known request errors
+  if (error instanceof PrismaClientKnownRequestError) {
     switch (error.code) {
-      case 'P2002':
+      case "P2002":
         // Unique constraint violation
-        const field = error.meta?.target as string[];
+        const field = (error.meta as any)?.target as string[];
         return {
-          message: `${field?.[0] || 'Field'} already exists`,
+          message: `${field?.[0] || "Field"} already exists`,
           statusCode: HTTP_STATUS.CONFLICT,
         };
 
-      case 'P2025':
+      case "P2025":
         // Record not found
         return {
           message: ERROR_MESSAGES.NOT_FOUND,
           statusCode: HTTP_STATUS.NOT_FOUND,
         };
 
-      case 'P2003':
+      case "P2003":
         // Foreign key constraint violation
         return {
-          message: 'Invalid reference to related record',
+          message: "Invalid reference to related record",
           statusCode: HTTP_STATUS.BAD_REQUEST,
         };
 
-      case 'P2014':
+      case "P2014":
         // Invalid ID
         return {
-          message: 'Invalid ID provided',
+          message: "Invalid ID provided",
           statusCode: HTTP_STATUS.BAD_REQUEST,
         };
 
       default:
         return {
-          message: 'Database operation failed',
+          message: "Database operation failed",
           statusCode: HTTP_STATUS.BAD_REQUEST,
         };
     }
   }
 
-  if (error instanceof Prisma.PrismaClientValidationError) {
+  // Check for Prisma validation errors
+  if (error instanceof PrismaClientValidationError) {
     return {
-      message: 'Invalid data provided',
+      message: "Invalid data provided",
       statusCode: HTTP_STATUS.BAD_REQUEST,
     };
   }
 
+  // Handle generic errors
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      statusCode: HTTP_STATUS.BAD_REQUEST,
+    };
+  }
+
+  // Unknown error
   return {
     message: ERROR_MESSAGES.INTERNAL_ERROR,
     statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -145,4 +162,38 @@ export function getSafeErrorMessage(error: unknown): string {
 
   // Don't expose internal errors to client
   return ERROR_MESSAGES.INTERNAL_ERROR;
+}
+
+/**
+ * Check if error is a database error
+ */
+export function isDatabaseError(error: unknown): boolean {
+  return (
+    error instanceof PrismaClientKnownRequestError ||
+    error instanceof PrismaClientValidationError
+  );
+}
+
+/**
+ * Create error from unknown type
+ */
+export function createErrorFromUnknown(error: unknown): AppError {
+  if (error instanceof AppError) {
+    return error;
+  }
+
+  if (error instanceof ZodError) {
+    return new ValidationError("Validation failed");
+  }
+
+  if (isDatabaseError(error)) {
+    const { message, statusCode } = formatPrismaError(error);
+    return new AppError(message, statusCode);
+  }
+
+  if (error instanceof Error) {
+    return new AppError(error.message);
+  }
+
+  return new AppError("An unexpected error occurred");
 }

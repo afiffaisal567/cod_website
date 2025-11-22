@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { forgotPasswordSchema } from "@/lib/validation";
+import { resendVerificationSchema } from "@/lib/validation"; // PERBAIKI IMPORT
 import authService from "@/services/auth.service";
 import {
   successResponse,
@@ -26,8 +26,8 @@ async function handler(request: NextRequest) {
       );
     }
 
-    // Validate input
-    const validation = await validateData(forgotPasswordSchema, body);
+    // Validate input - GUNAKAN SCHEMA YANG BENAR
+    const validation = await validateData(resendVerificationSchema, body);
     if (!validation.success) {
       return validationErrorResponse(validation.errors);
     }
@@ -55,7 +55,7 @@ export const POST = errorHandler(
     corsMiddleware(
       rateLimit({
         windowMs: 15 * 60 * 1000,
-        maxRequests: 3,
+        maxRequests: 10,
       })(handler)
     )
   )

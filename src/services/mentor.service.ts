@@ -8,7 +8,6 @@ import {
   USER_STATUS,
   USER_ROLES,
 } from "@/lib/constants";
-import type { MentorStatus, Prisma } from "@prisma/client";
 
 /**
  * Mentor Application Data
@@ -100,7 +99,7 @@ export class MentorService {
       },
     });
 
-    // Send notification to admin - FIXED: menggunakan create() bukan createNotification()
+    // Send notification to admin
     const admins = await prisma.user.findMany({
       where: { role: USER_ROLES.ADMIN, status: USER_STATUS.ACTIVE },
     });
@@ -137,7 +136,7 @@ export class MentorService {
     } = filters;
 
     // Build where clause
-    const where: Prisma.MentorProfileWhereInput = {
+    const where: any = {
       status: MENTOR_STATUS.APPROVED,
       user: { status: USER_STATUS.ACTIVE },
     };
@@ -440,7 +439,7 @@ export class MentorService {
     return {
       total_courses,
       total_students,
-      total_revenue: total_revenue._sum.total_amount || 0,
+      total_revenue: total_revenue._sum?.total_amount || 0,
       recent_enrollments,
       average_rating: mentor.average_rating,
       total_reviews: mentor.total_reviews,
@@ -642,7 +641,7 @@ export class MentorService {
     }
 
     const total_rating = reviews.reduce(
-      (sum, review) => sum + review.rating,
+      (sum: number, review: any) => sum + review.rating,
       0
     );
     const average_rating = total_rating / reviews.length;

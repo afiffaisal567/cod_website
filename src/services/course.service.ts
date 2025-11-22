@@ -2,7 +2,6 @@ import prisma from "@/lib/prisma";
 import { generateSlug } from "@/utils/string.util";
 import { AppError, NotFoundError, ForbiddenError } from "@/utils/error.util";
 import { HTTP_STATUS, COURSE_STATUS, USER_ROLES } from "@/lib/constants";
-import type { Prisma, CourseStatus, CourseLevel } from "@prisma/client";
 
 /**
  * Course Creation Data
@@ -12,7 +11,7 @@ interface CreateCourseData {
   description: string;
   shortDescription?: string;
   categoryId: string;
-  level: CourseLevel;
+  level: string;
   language: string;
   price: number;
   discountPrice?: number;
@@ -40,12 +39,12 @@ interface CourseListFilters {
   limit?: number;
   search?: string;
   categoryId?: string;
-  level?: CourseLevel;
+  level?: string;
   minPrice?: number;
   maxPrice?: number;
   isFree?: boolean;
   isPremium?: boolean;
-  status?: CourseStatus;
+  status?: string;
   mentorId?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
@@ -146,7 +145,7 @@ export class CourseService {
     } = filters;
 
     // Build where clause
-    const where: Prisma.CourseWhereInput = {};
+    const where: any = {};
 
     // Only show published courses for public
     if (!status) {
@@ -392,7 +391,7 @@ export class CourseService {
     }
 
     // Build update data manually to handle field name conversions
-    const updateData: Prisma.CourseUpdateInput = {};
+    const updateData: any = {};
 
     // Handle title and slug if title changed
     if (data.title && data.title !== course.title) {
@@ -529,7 +528,7 @@ export class CourseService {
     }
 
     const totalMaterials = course.sections.reduce(
-      (sum, section) => sum + section.materials.length,
+      (sum: number, section: any) => sum + section.materials.length,
       0
     );
 
@@ -618,7 +617,7 @@ export class CourseService {
     return {
       ...course,
       enrollments: Object.fromEntries(
-        enrollmentStats.map((stat) => [stat.status, stat._count])
+        enrollmentStats.map((stat: any) => [stat.status, stat._count])
       ),
       revenue: {
         total: revenueStats._sum?.total_amount || 0,

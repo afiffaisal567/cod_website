@@ -1,7 +1,7 @@
-import { videoStreaming } from '@/lib/streaming';
-import { AppError } from '@/utils/error.util';
-import { HTTP_STATUS } from '@/lib/constants';
-import type { VideoQuality, VideoStreamInfo } from '@/types/video.types';
+import { videoStreaming } from "@/lib/streaming";
+import { AppError } from "@/utils/error.util";
+import { HTTP_STATUS } from "@/lib/constants";
+import type { VideoQuality, VideoStreamInfo } from "@/types/video.types";
 
 /**
  * Streaming Service
@@ -23,7 +23,10 @@ export class StreamingService {
     try {
       return await videoStreaming.getVideoStream(videoPath, range);
     } catch {
-      throw new AppError('Video not found or cannot be streamed', HTTP_STATUS.NOT_FOUND);
+      throw new AppError(
+        "Video not found or cannot be streamed",
+        HTTP_STATUS.NOT_FOUND
+      );
     }
   }
 
@@ -37,11 +40,14 @@ export class StreamingService {
   /**
    * Get optimal quality based on connection speed
    */
-  async getOptimalQuality(videoId: string, connectionSpeed?: number): Promise<VideoQuality> {
+  async getOptimalQuality(
+    videoId: string,
+    connectionSpeed?: number
+  ): Promise<VideoQuality> {
     const available = await this.getAvailableQualities(videoId);
 
     if (available.length === 0) {
-      throw new AppError('No qualities available', HTTP_STATUS.NOT_FOUND);
+      throw new AppError("No qualities available", HTTP_STATUS.NOT_FOUND);
     }
 
     // If no connection speed provided, return highest quality
@@ -51,10 +57,10 @@ export class StreamingService {
 
     // Map connection speed to quality
     // connectionSpeed in Mbps
-    if (connectionSpeed >= 5) return '1080p';
-    if (connectionSpeed >= 2.5) return '720p';
-    if (connectionSpeed >= 1) return '480p';
-    return '360p';
+    if (connectionSpeed >= 5) return "1080p";
+    if (connectionSpeed >= 2.5) return "720p";
+    if (connectionSpeed >= 1) return "480p";
+    return "360p";
   }
 
   /**

@@ -66,7 +66,7 @@ export const POST = errorHandler(
     corsMiddleware(
       rateLimit({
         windowMs: 15 * 60 * 1000,
-        maxRequests: 5,
+        maxRequests: 10,
       })(handler)
     )
   )

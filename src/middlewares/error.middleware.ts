@@ -1,13 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { AppError, formatPrismaError, formatZodError } from '@/utils/error.util';
+import { NextRequest, NextResponse } from "next/server";
+import {
+  AppError,
+  formatPrismaError,
+  formatZodError,
+} from "@/utils/error.util";
 import {
   errorResponse,
   internalErrorResponse,
   validationErrorResponse,
-} from '@/utils/response.util';
-import { logError } from '@/utils/logger.util';
-import { ZodError } from 'zod';
-import { Prisma } from '@prisma/client';
+} from "@/utils/response.util";
+import { logError } from "@/utils/logger.util";
+import { ZodError } from "zod";
 
 /**
  * Global Error Handler Middleware
@@ -25,11 +28,23 @@ export function errorHandler(
 }
 
 /**
+ * Check if error is a Prisma error
+ */
+function isPrismaError(error: any): boolean {
+  return (
+    error &&
+    (error.code?.startsWith("P") ||
+      error.name?.includes("Prisma") ||
+      error.clientVersion)
+  );
+}
+
+/**
  * Handle different types of errors
  */
 function handleError(error: unknown): NextResponse {
   // Log error
-  logError('API Error', error);
+  logError("API Error", error);
 
   // Handle AppError (operational errors)
   if (error instanceof AppError) {
@@ -38,14 +53,11 @@ function handleError(error: unknown): NextResponse {
 
   // Handle Zod Validation Errors
   if (error instanceof ZodError) {
-    return validationErrorResponse(formatZodError(error), 'Validation failed');
+    return validationErrorResponse(formatZodError(error), "Validation failed");
   }
 
-  // Handle Prisma Errors
-  if (
-    error instanceof Prisma.PrismaClientKnownRequestError ||
-    error instanceof Prisma.PrismaClientValidationError
-  ) {
+  // Handle Prisma Errors without importing Prisma namespace
+  if (isPrismaError(error)) {
     const { message, statusCode } = formatPrismaError(error);
     return errorResponse(message, statusCode);
   }
@@ -54,13 +66,15 @@ function handleError(error: unknown): NextResponse {
   if (error instanceof Error) {
     // Don't expose internal error messages in production
     const message =
-      process.env.NODE_ENV === 'development' ? error.message : 'An unexpected error occurred';
+      process.env.NODE_ENV === "development"
+        ? error.message
+        : "An unexpected error occurred";
 
     return internalErrorResponse(message);
   }
 
   // Unknown error
-  return internalErrorResponse('An unexpected error occurred');
+  return internalErrorResponse("An unexpected error occurred");
 }
 
 /**

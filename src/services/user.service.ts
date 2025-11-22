@@ -1,10 +1,21 @@
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/utils/crypto.util";
 import { ConflictError, NotFoundError } from "@/utils/error.util";
-import { USER_STATUS } from "@/lib/constants";
-import type { UserRole, UserStatus, Prisma } from "@prisma/client";
-// Import DisabilityType as value, not just type
-import { DisabilityType } from "@prisma/client";
+import { USER_STATUS, USER_ROLES } from "@/lib/constants";
+
+// Define types locally since Prisma types are not available
+type UserRole = "ADMIN" | "MENTOR" | "STUDENT";
+type UserStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "PENDING";
+type DisabilityType =
+  | "VISUAL"
+  | "HEARING"
+  | "PHYSICAL"
+  | "INTELLECTUAL"
+  | "MENTAL_HEALTH"
+  | "SPEECH"
+  | "MULTIPLE"
+  | "OTHER"
+  | "NONE";
 
 /**
  * User Service
@@ -34,7 +45,7 @@ export class UserService {
     } = params;
 
     // Build where clause
-    const where: Prisma.UserWhereInput = {};
+    const where: any = {};
 
     if (search) {
       where.OR = [
@@ -209,7 +220,7 @@ export class UserService {
     }
 
     // Prepare update data
-    const updateData: Prisma.UserUpdateInput = {};
+    const updateData: any = {};
 
     if (data.name !== undefined) updateData.full_name = data.name;
     if (data.bio !== undefined) updateData.bio = data.bio;
@@ -406,8 +417,10 @@ export class UserService {
 
     return {
       total,
-      byRole: Object.fromEntries(byRole.map((r) => [r.role, r._count])),
-      byStatus: Object.fromEntries(byStatus.map((s) => [s.status, s._count])),
+      byRole: Object.fromEntries(byRole.map((r: any) => [r.role, r._count])),
+      byStatus: Object.fromEntries(
+        byStatus.map((s: any) => [s.status, s._count])
+      ),
       newThisMonth,
     };
   }
@@ -506,14 +519,24 @@ export class UserService {
    * Get disability type enum values
    */
   getDisabilityTypes(): DisabilityType[] {
-    return Object.values(DisabilityType);
+    return [
+      "VISUAL",
+      "HEARING",
+      "PHYSICAL",
+      "INTELLECTUAL",
+      "MENTAL_HEALTH",
+      "SPEECH",
+      "MULTIPLE",
+      "OTHER",
+      "NONE",
+    ];
   }
 
   /**
    * Validate disability type
    */
   isValidDisabilityType(type: string): type is DisabilityType {
-    return Object.values(DisabilityType).includes(type as DisabilityType);
+    return this.getDisabilityTypes().includes(type as DisabilityType);
   }
 
   /**

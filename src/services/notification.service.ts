@@ -1,55 +1,89 @@
 import prisma from "@/lib/prisma";
 import emailService from "./email.service";
-import type {
-  NotificationType,
-  Notification,
-  NotificationSettings,
-} from "@prisma/client";
-import type { Prisma } from "@prisma/client";
+import { logInfo, logError } from "@/utils/logger.util";
+
+// Define types locally since Prisma types are not available
+type NotificationType =
+  | "COURSE_ENROLLMENT"
+  | "COURSE_UPDATE"
+  | "PAYMENT_SUCCESS"
+  | "PAYMENT_FAILED"
+  | "CERTIFICATE_ISSUED"
+  | "COMMENT_REPLY"
+  | "REVIEW_RECEIVED"
+  | "MENTOR_APPROVED"
+  | "MENTOR_REJECTED"
+  | "SYSTEM_ANNOUNCEMENT";
+
+type NotificationStatus = "UNREAD" | "READ";
+
+interface NotificationData {
+  [key: string]: unknown;
+}
 
 export class NotificationService {
   /**
-   * Create notification
+   * Create notification secara synchronous
    */
   async create(
     userId: string,
     type: NotificationType,
     title: string,
     message: string,
-    data?: Record<string, unknown>
+    data?: NotificationData
   ): Promise<void> {
-    // Check notification settings
-    let settings: NotificationSettings | null = null;
-
     try {
-      settings = await prisma.notificationSettings.findUnique({
+      // Check notification settings
+      let settings = await prisma.notificationSettings.findUnique({
         where: { user_id: userId },
       });
-    } catch (error) {
-      console.error("Failed to fetch notification settings:", error);
-      // Continue without settings (all notifications enabled by default)
-    }
 
-    // Check if this type of notification is enabled
-    if (settings && !this.isNotificationEnabled(settings, type)) {
-      return; // Skip notification
-    }
+      // Create default settings jika tidak ada
+      if (!settings) {
+        settings = await prisma.notificationSettings.create({
+          data: {
+            user_id: userId,
+            email_notifications: true,
+            push_notifications: true,
+            course_updates: true,
+            payment_notifications: true,
+            certificate_notifications: true,
+            comment_notifications: true,
+            review_notifications: true,
+          },
+        });
+      }
 
-    // Create notification
-    await prisma.notification.create({
-      data: {
-        user_id: userId,
+      // Check if this type of notification is enabled
+      if (!this.isNotificationEnabled(settings, type)) {
+        return; // Skip notification
+      }
+
+      // Create notification di database
+      const notification = await prisma.notification.create({
+        data: {
+          user_id: userId,
+          type,
+          title,
+          message,
+          data: data || {},
+          status: "UNREAD" as NotificationStatus,
+        },
+      });
+
+      logInfo(`Notification created`, {
+        notificationId: notification.id,
+        userId,
         type,
-        title,
-        message,
-        data: (data || {}) as Prisma.JsonObject,
-        status: "UNREAD",
-      },
-    });
+      });
 
-    // Send email if enabled
-    if (settings?.email_notifications) {
-      await this.sendEmailNotification(userId, title, message);
+      // Send email jika enabled
+      if (settings.email_notifications && this.shouldSendEmail(type)) {
+        await this.sendEmailNotification(userId, title, message);
+      }
+    } catch (error) {
+      logError("Failed to create notification", error);
+      throw error;
     }
   }
 
@@ -57,10 +91,10 @@ export class NotificationService {
    * Check if notification type is enabled
    */
   private isNotificationEnabled(
-    settings: NotificationSettings,
+    settings: any,
     type: NotificationType
   ): boolean {
-    const typeMap: Record<string, keyof NotificationSettings> = {
+    const typeMap: Record<string, keyof typeof settings> = {
       COURSE_ENROLLMENT: "course_updates",
       COURSE_UPDATE: "course_updates",
       PAYMENT_SUCCESS: "payment_notifications",
@@ -78,6 +112,23 @@ export class NotificationService {
   }
 
   /**
+   * Check if should send email for this notification type
+   */
+  private shouldSendEmail(type: NotificationType): boolean {
+    const emailTypes = [
+      "COURSE_ENROLLMENT",
+      "PAYMENT_SUCCESS",
+      "PAYMENT_FAILED",
+      "CERTIFICATE_ISSUED",
+      "MENTOR_APPROVED",
+      "MENTOR_REJECTED",
+      "SYSTEM_ANNOUNCEMENT",
+    ];
+
+    return emailTypes.includes(type);
+  }
+
+  /**
    * Send email notification
    */
   private async sendEmailNotification(
@@ -92,19 +143,26 @@ export class NotificationService {
       });
 
       if (user) {
-        // Queue email (don't wait)
-        emailService.queue({
+        await emailService.sendNow({
           to: user.email,
           subject: title,
           html: `
-            <h2>${title}</h2>
-            <p>${message}</p>
-            <p>Best regards,<br>LMS Platform Team</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #4F46E5;">${title}</h2>
+              <p style="font-size: 16px; line-height: 1.5;">${message}</p>
+              <p style="color: #666; font-size: 14px;">
+                Best regards,<br>
+                LMS Platform Team
+              </p>
+            </div>
           `,
         });
+
+        logInfo(`Email notification sent`, { userId, email: user.email });
       }
     } catch (error) {
-      console.error("Failed to send email notification:", error);
+      logError("Failed to send email notification", error);
+      // Don't throw error, just log it
     }
   }
 
@@ -113,13 +171,32 @@ export class NotificationService {
    */
   async getUserNotifications(
     userId: string,
-    limit: number = 10
-  ): Promise<Notification[]> {
-    return prisma.notification.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: "desc" },
-      take: limit,
-    });
+    limit: number = 10,
+    page: number = 1
+  ) {
+    const skip = (page - 1) * limit;
+
+    const [notifications, total] = await Promise.all([
+      prisma.notification.findMany({
+        where: { user_id: userId },
+        orderBy: { created_at: "desc" },
+        take: limit,
+        skip,
+      }),
+      prisma.notification.count({
+        where: { user_id: userId },
+      }),
+    ]);
+
+    return {
+      data: notifications,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   /**
@@ -188,6 +265,7 @@ export class NotificationService {
       },
     });
 
+    logInfo(`Cleaned old notifications`, { count: result.count, days });
     return result.count;
   }
 
@@ -200,8 +278,8 @@ export class NotificationService {
       userId,
       "COURSE_ENROLLMENT",
       "Course Enrollment",
-      `You've successfully enrolled in ${courseName}`,
-      { courseName }
+      `You've successfully enrolled in "${courseName}". Start learning now!`,
+      { courseName, type: "enrollment" }
     );
   }
 
@@ -214,8 +292,8 @@ export class NotificationService {
       userId,
       "PAYMENT_SUCCESS",
       "Payment Successful",
-      `Your payment of Rp${amount.toLocaleString()} for ${courseName} was successful`,
-      { courseName, amount }
+      `Your payment of Rp${amount.toLocaleString()} for "${courseName}" was successful.`,
+      { courseName, amount, type: "payment_success" }
     );
   }
 
@@ -228,8 +306,8 @@ export class NotificationService {
       userId,
       "CERTIFICATE_ISSUED",
       "Certificate Ready",
-      `Your certificate for ${courseName} is ready to download`,
-      { courseName, certificateId }
+      `Your certificate for "${courseName}" is ready to download.`,
+      { courseName, certificateId, type: "certificate" }
     );
   }
 
@@ -238,7 +316,7 @@ export class NotificationService {
       userId,
       "MENTOR_APPROVED",
       "Mentor Application Approved",
-      "Congratulations! Your mentor application has been approved"
+      "Congratulations! Your mentor application has been approved. You can now create and publish courses."
     );
   }
 
@@ -250,20 +328,6 @@ export class NotificationService {
       `Your mentor application was not approved. Reason: ${reason}`,
       { reason }
     );
-  }
-
-  /**
-   * Create notification (alias method for backward compatibility)
-   * @deprecated Use create() instead
-   */
-  async createNotification(
-    userId: string,
-    type: NotificationType,
-    title: string,
-    message: string,
-    data?: Record<string, unknown>
-  ): Promise<void> {
-    return this.create(userId, type, title, message, data);
   }
 }
 

@@ -54,8 +54,8 @@ export const POST = errorHandler(
   loggingMiddleware(
     corsMiddleware(
       rateLimit({
-        windowMs: 15 * 60 * 1000,
-        maxRequests: 3,
+        windowMs: 1 * 60 * 1000,
+        maxRequests: 10,
       })(handler)
     )
   )

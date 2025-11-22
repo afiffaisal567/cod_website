@@ -1,4 +1,3 @@
-import { PrismaClient } from "@prisma/client";
 import { logInfo, logError, logWarn } from "@/utils/logger.util";
 
 /**
@@ -39,29 +38,46 @@ export const databaseConfig = {
   },
 };
 
+// Extended type for query operations
+interface QueryOperationParams {
+  operation: string;
+  model: string;
+  args: any;
+  query: (args: any) => Promise<any>;
+}
+
 /**
  * Database Connection Manager
  */
 class DatabaseManager {
-  private prisma: PrismaClient | null = null;
+  private prisma: any = null;
   private isConnected: boolean = false;
   private connectionAttempts: number = 0;
 
   /**
    * Get Prisma Client instance
    */
-  getClient(): PrismaClient {
+  getClient(): any {
     if (!this.prisma) {
-      this.prisma = new PrismaClient({
-        log: this.getLogConfig(),
-        datasources: {
-          db: {
-            url: process.env.DATABASE_URL,
+      try {
+        // Dynamic import to avoid build-time issues
+        const { PrismaClient } = require("@prisma/client");
+        this.prisma = new PrismaClient({
+          log: this.getLogConfig(),
+          datasources: {
+            db: {
+              url: process.env.DATABASE_URL,
+            },
           },
-        },
-      });
+        });
 
-      this.setupEventHandlers();
+        this.setupEventHandlers();
+      } catch (error) {
+        logError("Failed to initialize Prisma Client", error);
+        throw new Error(
+          "Prisma Client is not available. Please run 'npx prisma generate'"
+        );
+      }
     }
 
     return this.prisma;
@@ -89,7 +105,12 @@ class DatabaseManager {
     // Query logging with performance monitoring
     this.prisma.$extends({
       query: {
-        async $allOperations({ operation, model, args, query }) {
+        async $allOperations({
+          operation,
+          model,
+          args,
+          query,
+        }: QueryOperationParams) {
           const start = Date.now();
           const result = await query(args);
           const duration = Date.now() - start;

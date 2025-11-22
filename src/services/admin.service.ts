@@ -2,7 +2,6 @@ import prisma from "@/lib/prisma";
 import { hashPassword } from "@/utils/crypto.util";
 import { AppError, NotFoundError } from "@/utils/error.util";
 import { HTTP_STATUS } from "@/lib/constants";
-import type { Prisma, UserRole, UserStatus } from "@prisma/client";
 
 /**
  * Admin Service
@@ -95,15 +94,15 @@ export class AdminService {
       page?: number;
       limit?: number;
       search?: string;
-      role?: UserRole;
-      status?: UserStatus;
+      role?: string;
+      status?: string;
     } = {}
   ) {
     const { page = 1, limit = 20, search, role, status } = filters;
 
     const skip = (page - 1) * limit;
 
-    const where: Prisma.UserWhereInput = {};
+    const where: any = {};
 
     if (search) {
       where.OR = [
@@ -162,7 +161,7 @@ export class AdminService {
   /**
    * Update user status
    */
-  async updateUserStatus(userId: string, status: UserStatus, reason?: string) {
+  async updateUserStatus(userId: string, status: string, reason?: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -206,8 +205,8 @@ export class AdminService {
       data: {
         ...data,
         password: hashedPassword,
-        role: "ADMIN" as UserRole,
-        status: "ACTIVE" as UserStatus,
+        role: "ADMIN",
+        status: "ACTIVE",
         email_verified: true,
         email_verified_at: new Date(),
       },
@@ -254,7 +253,7 @@ export class AdminService {
    * Get revenue statistics
    */
   async getRevenueStatistics(dateRange?: { start: Date; end: Date }) {
-    const where: Prisma.TransactionWhereInput = {
+    const where: any = {
       status: "PAID",
     };
 
@@ -312,7 +311,7 @@ export class AdminService {
 
     // Get course details for revenue by course
     const courseRevenue = await Promise.all(
-      revenueByCourse.map(async (item) => {
+      revenueByCourse.map(async (item: any) => {
         const course = await prisma.course.findUnique({
           where: { id: item.course_id },
           select: {
@@ -362,7 +361,7 @@ export class AdminService {
 
     const skip = (page - 1) * limit;
 
-    const where: Prisma.CourseWhereInput = {};
+    const where: any = {};
 
     if (search) {
       where.OR = [
@@ -372,7 +371,7 @@ export class AdminService {
     }
 
     if (status) {
-      where.status = status as any;
+      where.status = status;
     }
 
     if (mentorId) {
@@ -433,7 +432,7 @@ export class AdminService {
 
     const updated = await prisma.course.update({
       where: { id: courseId },
-      data: { status: status as any },
+      data: { status },
     });
 
     // Notify mentor about course status change
@@ -457,9 +456,9 @@ export class AdminService {
     const { page = 1, limit = 20, status } = filters;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.MentorProfileWhereInput = {};
+    const where: any = {};
     if (status) {
-      where.status = status as any;
+      where.status = status;
     }
 
     const [applications, total] = await Promise.all([
@@ -517,7 +516,7 @@ export class AdminService {
       }),
       prisma.user.update({
         where: { id: mentorProfile.user_id },
-        data: { role: "MENTOR" as UserRole },
+        data: { role: "MENTOR" },
       }),
     ]);
 

@@ -75,3 +75,73 @@
 2025-11-21 20:38:19:3819 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/logout 401 - 5ms[39m
 2025-11-21 20:43:38:4338 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/register 201 - 4992ms[39m
 2025-11-21 20:45:30:4530 [35mhttp[39m: [35mGET http://localhost:3000/api/auth/me 401 - 9ms[39m
+2025-11-22 08:49:29:4929 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/register 201 - 5663ms[39m
+2025-11-22 08:50:42:5042 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/resend-verification 200 - 6607ms[39m
+2025-11-22 08:51:38:5138 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/verify-email 200 - 29ms[39m
+2025-11-22 08:52:09:529 [35mhttp[39m: [35mGET http://localhost:3000/api/auth/me 401 - 14ms[39m
+2025-11-22 08:52:45:5245 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/login 200 - 5180ms[39m
+2025-11-22 08:53:03:533 [35mhttp[39m: [35mGET http://localhost:3000/api/auth/me 401 - 5ms[39m
+2025-11-22 08:54:15:5415 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/refresh 200 - 4426ms[39m
+2025-11-22 08:55:01:551 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/forgot-password 200 - 4509ms[39m
+2025-11-22 09:05:10:510 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/login 200 - 4868ms[39m
+2025-11-22 09:05:33:533 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/reset-password 400 - 4483ms[39m
+2025-11-22 09:05:45:545 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/change-password 401 - 16ms[39m
+2025-11-22 09:05:55:555 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/logout 401 - 6ms[39m
+2025-11-22 09:06:45:645 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/register 201 - 4944ms[39m
+2025-11-22 09:07:11:711 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/login 200 - 4816ms[39m
+2025-11-22 09:08:10:810 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/verify-email 400 - 9ms[39m
+2025-11-22 09:08:22:822 [35mhttp[39m: [35mPOST http://localhost:3000/api/auth/verify-email 200 - 21ms[39m
+2025-11-22 13:28:56 [INFO]: 📧 Sending email:
+{
+  "to": "afiffa568@gmail.com",
+  "subject": "Verify Your Email Address",
+  "actualRecipient": "dev@lmsplatform.com"
+}
+2025-11-22 13:28:56 [INFO]: ✅ Email server connection verified
+2025-11-22 13:28:58 [INFO]: ✅ Email sent successfully
+{
+  "messageId": "<a2bcad51-2a92-e302-abd7-a8447e113df4@gmail.com>",
+  "to": "dev@lmsplatform.com",
+  "subject": "Verify Your Email Address"
+}
+2025-11-22 13:29:43 [INFO]: 📧 Sending email:
+{
+  "to": "afiffa568@gmail.com",
+  "subject": "Verify Your Email Address",
+  "actualRecipient": "dev@lmsplatform.com"
+}
+2025-11-22 13:29:45 [INFO]: ✅ Email sent successfully
+{
+  "messageId": "<df7f6ebb-2d8a-f160-82bd-c4aa5baf90cf@gmail.com>",
+  "to": "dev@lmsplatform.com",
+  "subject": "Verify Your Email Address"
+}
+2025-11-22 13:36:15 [INFO]: ✅ Email server connection verified
+2025-11-22 13:42:28 [INFO]: ✅ Email server connection verified
+2025-11-22 13:45:09 [INFO]: 📧 Sending email:
+{
+  "to": "afiffa568@gmail.com",
+  "subject": "Reset Your Password",
+  "actualRecipient": "dev@lmsplatform.com"
+}
+2025-11-22 13:45:10 [INFO]: ✅ Email server connection verified
+2025-11-22 13:45:11 [INFO]: ✅ Email sent successfully
+{
+  "messageId": "<34f14208-2b4e-207f-29a1-98a1cffe9e67@gmail.com>",
+  "to": "dev@lmsplatform.com",
+  "subject": "Reset Your Password"
+}
+2025-11-22 13:57:10 [INFO]: 📧 Sending email:
+{
+  "to": "afiffa568@gmail.com",
+  "subject": "Reset Your Password",
+  "actualRecipient": "dev@lmsplatform.com"
+}
+2025-11-22 13:57:12 [INFO]: ✅ Email server connection verified
+2025-11-22 13:57:14 [INFO]: ✅ Email sent successfully
+{
+  "messageId": "<c72f7e1a-9cfd-7d52-d779-8e3c65645b85@gmail.com>",
+  "to": "dev@lmsplatform.com",
+  "subject": "Reset Your Password"
+}
+2025-11-22 14:22:27 [INFO]: ✅ Email server connection verified
