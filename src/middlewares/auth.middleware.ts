@@ -74,13 +74,22 @@ export async function authMiddleware(
   }
 }
 
+// Extended interface untuk handler dengan context
+export interface AuthHandlerContext {
+  params: { [key: string]: string };
+}
+
 export function requireAuth(
   handler: (
     request: NextRequest,
+    context: AuthHandlerContext,
     user: AuthenticatedUser
   ) => Promise<NextResponse>
-): (request: NextRequest) => Promise<NextResponse> {
-  return async (request: NextRequest) => {
+): (
+  request: NextRequest,
+  context: AuthHandlerContext
+) => Promise<NextResponse> {
+  return async (request: NextRequest, context: AuthHandlerContext) => {
     const authResult = await authMiddleware(request);
 
     // Jika authResult adalah NextResponse (error), kembalikan error
@@ -89,8 +98,8 @@ export function requireAuth(
       return authResult;
     }
 
-    // Jika authResult berisi user, panggil handler dengan user
+    // Jika authResult berisi user, panggil handler dengan user dan context
     console.log("✅ Auth successful, proceeding to handler");
-    return handler(request, authResult.user);
+    return handler(request, context, authResult.user);
   };
 }
