@@ -1,4 +1,3 @@
-// services/email.service.ts
 import nodemailer from "nodemailer";
 
 // Konfigurasi Email
@@ -32,8 +31,7 @@ export interface EmailResult {
 }
 
 /**
- * Email Service Class
- * Menangani pengiriman email menggunakan Nodemailer dengan connection pooling
+ * Email Service Class - Fixed with missing methods
  */
 export class EmailService {
   private transporter: nodemailer.Transporter;
@@ -80,7 +78,6 @@ export class EmailService {
    * Setup event handlers untuk transporter
    */
   private setupTransporterEvents(): void {
-    // Hanya gunakan event yang tersedia di Nodemailer
     this.transporter.on("idle", () => {
       console.log("📧 Email transporter is idle");
     });
@@ -89,8 +86,6 @@ export class EmailService {
       console.error("❌ Email transporter error:", error);
       this.isConnected = false;
     });
-
-    // Event 'end' tidak tersedia di Nodemailer, jadi dihapus
   }
 
   /**
@@ -358,6 +353,92 @@ export class EmailService {
     });
 
     return result;
+  }
+
+  /**
+   * Send certificate email - NEW METHOD
+   */
+  async sendCertificateEmail(
+    to: string,
+    userName: string,
+    courseName: string,
+    certificateUrl: string
+  ): Promise<EmailResult> {
+    const subject = "Your Certificate is Ready - Course Online Disabilitas";
+
+    const html = this.generateCertificateTemplate(
+      userName,
+      courseName,
+      certificateUrl
+    );
+    const text = `Hi ${userName},\n\nCongratulations! Your certificate for "${courseName}" is ready.\n\nYou can download it from: ${certificateUrl}\n\nThank you for completing the course!`;
+
+    console.log("🏆 Sending certificate email to:", to);
+
+    const result = await this.sendEmail({
+      to,
+      subject,
+      html,
+      text,
+    });
+
+    return result;
+  }
+
+  /**
+   * Send mentor approved email - NEW METHOD
+   */
+  async sendMentorApprovedEmail(
+    to: string,
+    userName: string
+  ): Promise<EmailResult> {
+    const subject = "Mentor Application Approved - Course Online Disabilitas";
+
+    const html = this.generateMentorApprovedTemplate(userName);
+    const text = `Hi ${userName},\n\nCongratulations! Your mentor application has been approved.\n\nYou can now create and publish courses on our platform.\n\nWelcome to our mentor community!`;
+
+    console.log("✅ Sending mentor approved email to:", to);
+
+    const result = await this.sendEmail({
+      to,
+      subject,
+      html,
+      text,
+    });
+
+    return result;
+  }
+
+  /**
+   * Send mentor rejected email - NEW METHOD
+   */
+  async sendMentorRejectedEmail(
+    to: string,
+    userName: string,
+    reason: string
+  ): Promise<EmailResult> {
+    const subject = "Mentor Application Status - Course Online Disabilitas";
+
+    const html = this.generateMentorRejectedTemplate(userName, reason);
+    const text = `Hi ${userName},\n\nThank you for your interest in becoming a mentor.\n\nAfter careful review, we regret to inform you that your application was not approved at this time.\n\nReason: ${reason}\n\nYou may reapply after addressing the feedback provided.`;
+
+    console.log("❌ Sending mentor rejected email to:", to);
+
+    const result = await this.sendEmail({
+      to,
+      subject,
+      html,
+      text,
+    });
+
+    return result;
+  }
+
+  /**
+   * Send email immediately (alias for sendEmail) - NEW METHOD
+   */
+  async sendNow(options: EmailOptions): Promise<EmailResult> {
+    return this.sendEmail(options);
   }
 
   /**
@@ -752,6 +833,353 @@ export class EmailService {
 
                   <div class="message">
                       Happy learning!<br>
+                      The Course Online Disabilitas Team
+                  </div>
+              </div>
+              <div class="footer">
+                  <p>&copy; ${new Date().getFullYear()} Course Online Disabilitas. All rights reserved.</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateCertificateTemplate(
+    userName: string,
+    courseName: string,
+    certificateUrl: string
+  ): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Certificate Ready</title>
+          <style>
+              body {
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  line-height: 1.6;
+                  color: #333;
+                  margin: 0;
+                  padding: 0;
+                  background-color: #f9fafb;
+              }
+              .container {
+                  max-width: 600px;
+                  margin: 0 auto;
+                  background: #ffffff;
+                  border-radius: 8px;
+                  overflow: hidden;
+                  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                  background: linear-gradient(135deg, #7C3AED, #8B5CF6);
+                  color: white;
+                  padding: 30px 20px;
+                  text-align: center;
+              }
+              .header h1 {
+                  margin: 0;
+                  font-size: 24px;
+                  font-weight: 600;
+              }
+              .content {
+                  padding: 30px;
+              }
+              .greeting {
+                  font-size: 18px;
+                  margin-bottom: 20px;
+                  color: #374151;
+              }
+              .message {
+                  margin-bottom: 25px;
+                  color: #6B7280;
+              }
+              .button {
+                  display: inline-block;
+                  padding: 14px 28px;
+                  background: linear-gradient(135deg, #7C3AED, #8B5CF6);
+                  color: white;
+                  text-decoration: none;
+                  border-radius: 6px;
+                  font-weight: 600;
+                  text-align: center;
+                  margin: 20px 0;
+              }
+              .certificate-info {
+                  background: #f3f4f6;
+                  padding: 15px;
+                  border-radius: 6px;
+                  margin: 20px 0;
+              }
+              .footer {
+                  padding: 20px;
+                  text-align: center;
+                  color: #9CA3AF;
+                  font-size: 14px;
+                  border-top: 1px solid #E5E7EB;
+              }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>Certificate of Completion</h1>
+              </div>
+              <div class="content">
+                  <div class="greeting">Congratulations ${userName}!</div>
+                  
+                  <div class="message">
+                      You have successfully completed the course <strong>"${courseName}"</strong>. 
+                      Your certificate is now ready for download.
+                  </div>
+
+                  <div class="certificate-info">
+                      <strong>Course:</strong> ${courseName}<br>
+                      <strong>Issued:</strong> ${new Date().toLocaleDateString()}
+                  </div>
+
+                  <div style="text-align: center;">
+                      <a href="${certificateUrl}" class="button">Download Certificate</a>
+                  </div>
+
+                  <div class="message">
+                      This certificate verifies your successful completion of the course and can be shared with employers, 
+                      added to your portfolio, or used for professional development purposes.
+                  </div>
+
+                  <div class="message">
+                      Congratulations on your achievement!<br>
+                      The Course Online Disabilitas Team
+                  </div>
+              </div>
+              <div class="footer">
+                  <p>&copy; ${new Date().getFullYear()} Course Online Disabilitas. All rights reserved.</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateMentorApprovedTemplate(userName: string): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Mentor Application Approved</title>
+          <style>
+              body {
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  line-height: 1.6;
+                  color: #333;
+                  margin: 0;
+                  padding: 0;
+                  background-color: #f9fafb;
+              }
+              .container {
+                  max-width: 600px;
+                  margin: 0 auto;
+                  background: #ffffff;
+                  border-radius: 8px;
+                  overflow: hidden;
+                  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                  background: linear-gradient(135deg, #059669, #10B981);
+                  color: white;
+                  padding: 30px 20px;
+                  text-align: center;
+              }
+              .header h1 {
+                  margin: 0;
+                  font-size: 24px;
+                  font-weight: 600;
+              }
+              .content {
+                  padding: 30px;
+              }
+              .greeting {
+                  font-size: 18px;
+                  margin-bottom: 20px;
+                  color: #374151;
+              }
+              .message {
+                  margin-bottom: 25px;
+                  color: #6B7280;
+              }
+              .button {
+                  display: inline-block;
+                  padding: 14px 28px;
+                  background: linear-gradient(135deg, #059669, #10B981);
+                  color: white;
+                  text-decoration: none;
+                  border-radius: 6px;
+                  font-weight: 600;
+                  text-align: center;
+                  margin: 20px 0;
+              }
+              .next-steps {
+                  background: #f0fdf4;
+                  border: 1px solid #bbf7d0;
+                  padding: 15px;
+                  border-radius: 6px;
+                  margin: 20px 0;
+              }
+              .footer {
+                  padding: 20px;
+                  text-align: center;
+                  color: #9CA3AF;
+                  font-size: 14px;
+                  border-top: 1px solid #E5E7EB;
+              }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>Welcome to Our Mentor Community!</h1>
+              </div>
+              <div class="content">
+                  <div class="greeting">Hi ${userName},</div>
+                  
+                  <div class="message">
+                      We're excited to inform you that your mentor application has been approved! 
+                      Welcome to our community of dedicated educators.
+                  </div>
+
+                  <div class="next-steps">
+                      <strong>Next Steps:</strong>
+                      <ul>
+                          <li>Create your first course</li>
+                          <li>Set up your mentor profile</li>
+                          <li>Start sharing your knowledge with students</li>
+                      </ul>
+                  </div>
+
+                  <div style="text-align: center;">
+                      <a href="${
+                        process.env.APP_URL
+                      }/mentor/dashboard" class="button">Go to Mentor Dashboard</a>
+                  </div>
+
+                  <div class="message">
+                      As a mentor, you'll have the opportunity to impact students' lives, 
+                      share your expertise, and earn income from your courses.
+                  </div>
+
+                  <div class="message">
+                      Welcome aboard!<br>
+                      The Course Online Disabilitas Team
+                  </div>
+              </div>
+              <div class="footer">
+                  <p>&copy; ${new Date().getFullYear()} Course Online Disabilitas. All rights reserved.</p>
+              </div>
+          </div>
+      </body>
+      </html>
+    `;
+  }
+
+  private generateMentorRejectedTemplate(
+    userName: string,
+    reason: string
+  ): string {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Mentor Application Status</title>
+          <style>
+              body {
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  line-height: 1.6;
+                  color: #333;
+                  margin: 0;
+                  padding: 0;
+                  background-color: #f9fafb;
+              }
+              .container {
+                  max-width: 600px;
+                  margin: 0 auto;
+                  background: #ffffff;
+                  border-radius: 8px;
+                  overflow: hidden;
+                  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              }
+              .header {
+                  background: linear-gradient(135deg, #DC2626, #EF4444);
+                  color: white;
+                  padding: 30px 20px;
+                  text-align: center;
+              }
+              .header h1 {
+                  margin: 0;
+                  font-size: 24px;
+                  font-weight: 600;
+              }
+              .content {
+                  padding: 30px;
+              }
+              .greeting {
+                  font-size: 18px;
+                  margin-bottom: 20px;
+                  color: #374151;
+              }
+              .message {
+                  margin-bottom: 25px;
+                  color: #6B7280;
+              }
+              .reason {
+                  background: #fef2f2;
+                  border: 1px solid #fecaca;
+                  padding: 15px;
+                  border-radius: 6px;
+                  margin: 20px 0;
+                  color: #7f1d1d;
+              }
+              .footer {
+                  padding: 20px;
+                  text-align: center;
+                  color: #9CA3AF;
+                  font-size: 14px;
+                  border-top: 1px solid #E5E7EB;
+              }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>Mentor Application Update</h1>
+              </div>
+              <div class="content">
+                  <div class="greeting">Hi ${userName},</div>
+                  
+                  <div class="message">
+                      Thank you for your interest in becoming a mentor on our platform. 
+                      After careful review of your application, we regret to inform you that 
+                      we are unable to approve your application at this time.
+                  </div>
+
+                  <div class="reason">
+                      <strong>Reason for rejection:</strong><br>
+                      ${reason}
+                  </div>
+
+                  <div class="message">
+                      We encourage you to address the feedback above and consider reapplying in the future. 
+                      Our mentor requirements may change, and we'd be happy to review your application again.
+                  </div>
+
+                  <div class="message">
+                      Thank you for your understanding.<br>
                       The Course Online Disabilitas Team
                   </div>
               </div>

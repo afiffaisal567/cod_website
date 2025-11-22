@@ -13,12 +13,16 @@ import { corsMiddleware } from "@/middlewares/cors.middleware";
 import { loggingMiddleware } from "@/middlewares/logging.middleware";
 import { HTTP_STATUS } from "@/lib/constants";
 
-// Handler sekarang menerima parameter user
-async function handler(
-  request: NextRequest,
-  user: { userId: string; email: string; role: string }
-) {
+// Handler dengan parameter yang sesuai
+async function handler(request: NextRequest, context: any) {
   try {
+    // Dapatkan user dari context yang sudah ditambahkan oleh requireAuth
+    const user = context.user;
+
+    if (!user) {
+      return errorResponse("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
+    }
+
     // Parse request body
     let body;
     try {
@@ -66,6 +70,7 @@ async function handler(
 // Gunakan requireAuth yang sudah diperbaiki
 const authenticatedHandler = requireAuth(handler);
 
-export const POST = errorHandler(
-  loggingMiddleware(corsMiddleware(authenticatedHandler))
-);
+// Wrap dengan middleware
+const wrappedHandler = corsMiddleware(authenticatedHandler);
+
+export const POST = errorHandler(loggingMiddleware(wrappedHandler));

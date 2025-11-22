@@ -1,4 +1,3 @@
-// app/api/auth/me/route.ts
 import { NextRequest } from "next/server";
 import authService from "@/services/auth.service";
 import { successResponse, errorResponse } from "@/utils/response.util";
@@ -8,12 +7,16 @@ import { corsMiddleware } from "@/middlewares/cors.middleware";
 import { loggingMiddleware } from "@/middlewares/logging.middleware";
 import { HTTP_STATUS } from "@/lib/constants";
 
-// Handler yang menerima user dari requireAuth
-async function handler(
-  request: NextRequest,
-  user: { userId: string; email: string; role: string }
-) {
+// Handler dengan parameter yang sesuai
+async function handler(request: NextRequest, context: any) {
   try {
+    // Dapatkan user dari context yang sudah ditambahkan oleh requireAuth
+    const user = context.user;
+
+    if (!user) {
+      return errorResponse("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
+    }
+
     console.log("🔍 Getting user data for:", user.userId);
 
     const userData = await authService.getCurrentUser(user.userId);
@@ -41,6 +44,7 @@ async function handler(
 // Gunakan requireAuth untuk wrap handler
 const authenticatedHandler = requireAuth(handler);
 
-export const GET = errorHandler(
-  loggingMiddleware(corsMiddleware(authenticatedHandler))
-);
+// Wrap dengan middleware
+const wrappedHandler = corsMiddleware(authenticatedHandler);
+
+export const GET = errorHandler(loggingMiddleware(wrappedHandler));

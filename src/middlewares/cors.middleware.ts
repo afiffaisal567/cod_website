@@ -1,31 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
 // CORS configuration
 const ALLOWED_ORIGINS = [
-  'http://localhost:3000',
-  'http://localhost:3001',
-  process.env.APP_URL || '',
+  "http://localhost:3000",
+  "http://localhost:3001",
+  process.env.APP_URL || "",
 ];
 
-const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
-const ALLOWED_HEADERS = ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'];
+const ALLOWED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
+const ALLOWED_HEADERS = [
+  "Content-Type",
+  "Authorization",
+  "X-Requested-With",
+  "Accept",
+  "Origin",
+];
 
 /**
- * CORS Middleware
+ * CORS Middleware - Fixed to handle context parameter
  */
-export function corsMiddleware(
-  handler: (request: NextRequest) => Promise<NextResponse>
-): (request: NextRequest) => Promise<NextResponse> {
-  return async (request: NextRequest) => {
-    const origin = request.headers.get('origin') || '';
+export function corsMiddleware<T = any>(
+  handler: (request: NextRequest, context?: T) => Promise<NextResponse>
+): (request: NextRequest, context?: T) => Promise<NextResponse> {
+  return async (request: NextRequest, context?: T) => {
+    const origin = request.headers.get("origin") || "";
 
     // Handle preflight requests
-    if (request.method === 'OPTIONS') {
+    if (request.method === "OPTIONS") {
       return handlePreflight(origin);
     }
 
     // Execute handler
-    const response = await handler(request);
+    const response = await handler(request, context);
 
     // Add CORS headers to response
     return addCorsHeaders(response, origin);
@@ -40,12 +46,18 @@ function handlePreflight(origin: string): NextResponse {
 
   // Check if origin is allowed
   if (isOriginAllowed(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set("Access-Control-Allow-Origin", origin);
   }
 
-  response.headers.set('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
-  response.headers.set('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
-  response.headers.set('Access-Control-Max-Age', '86400'); // 24 hours
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    ALLOWED_METHODS.join(", ")
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    ALLOWED_HEADERS.join(", ")
+  );
+  response.headers.set("Access-Control-Max-Age", "86400"); // 24 hours
 
   return response;
 }
@@ -56,12 +68,18 @@ function handlePreflight(origin: string): NextResponse {
 function addCorsHeaders(response: NextResponse, origin: string): NextResponse {
   // Check if origin is allowed
   if (isOriginAllowed(origin)) {
-    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set("Access-Control-Allow-Origin", origin);
   }
 
-  response.headers.set('Access-Control-Allow-Credentials', 'true');
-  response.headers.set('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
-  response.headers.set('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
+  response.headers.set("Access-Control-Allow-Credentials", "true");
+  response.headers.set(
+    "Access-Control-Allow-Methods",
+    ALLOWED_METHODS.join(", ")
+  );
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    ALLOWED_HEADERS.join(", ")
+  );
 
   return response;
 }
@@ -76,27 +94,35 @@ function isOriginAllowed(origin: string): boolean {
   }
 
   // Check against whitelist
-  return ALLOWED_ORIGINS.includes(origin) || process.env.NODE_ENV === 'development';
+  return (
+    ALLOWED_ORIGINS.includes(origin) || process.env.NODE_ENV === "development"
+  );
 }
 
 /**
- * Public CORS (allow all origins)
+ * Public CORS (allow all origins) - Fixed version
  */
-export function publicCors(
-  handler: (request: NextRequest) => Promise<NextResponse>
-): (request: NextRequest) => Promise<NextResponse> {
-  return async (request: NextRequest) => {
+export function publicCors<T = any>(
+  handler: (request: NextRequest, context?: T) => Promise<NextResponse>
+): (request: NextRequest, context?: T) => Promise<NextResponse> {
+  return async (request: NextRequest, context?: T) => {
     // Handle preflight
-    if (request.method === 'OPTIONS') {
+    if (request.method === "OPTIONS") {
       const response = new NextResponse(null, { status: 204 });
-      response.headers.set('Access-Control-Allow-Origin', '*');
-      response.headers.set('Access-Control-Allow-Methods', ALLOWED_METHODS.join(', '));
-      response.headers.set('Access-Control-Allow-Headers', ALLOWED_HEADERS.join(', '));
+      response.headers.set("Access-Control-Allow-Origin", "*");
+      response.headers.set(
+        "Access-Control-Allow-Methods",
+        ALLOWED_METHODS.join(", ")
+      );
+      response.headers.set(
+        "Access-Control-Allow-Headers",
+        ALLOWED_HEADERS.join(", ")
+      );
       return response;
     }
 
-    const response = await handler(request);
-    response.headers.set('Access-Control-Allow-Origin', '*');
+    const response = await handler(request, context);
+    response.headers.set("Access-Control-Allow-Origin", "*");
 
     return response;
   };

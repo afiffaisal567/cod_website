@@ -1,5 +1,4 @@
-// app/api/auth/logout/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import authService from "@/services/auth.service";
 import { successResponse, errorResponse } from "@/utils/response.util";
 import { errorHandler } from "@/middlewares/error.middleware";
@@ -8,12 +7,16 @@ import { corsMiddleware } from "@/middlewares/cors.middleware";
 import { loggingMiddleware } from "@/middlewares/logging.middleware";
 import { HTTP_STATUS } from "@/lib/constants";
 
-// Handler yang menerima user dari requireAuth
-async function handler(
-  request: NextRequest,
-  user: { userId: string; email: string; role: string }
-) {
+// Handler dengan parameter yang sesuai
+async function handler(request: NextRequest, context: any) {
   try {
+    // Dapatkan user dari context yang sudah ditambahkan oleh requireAuth
+    const user = context.user;
+
+    if (!user) {
+      return errorResponse("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
+    }
+
     // Perform logout
     await authService.logout(user.userId);
 
@@ -32,6 +35,7 @@ async function handler(
 // Gunakan requireAuth untuk wrap handler
 const authenticatedHandler = requireAuth(handler);
 
-export const POST = errorHandler(
-  loggingMiddleware(corsMiddleware(authenticatedHandler))
-);
+// Wrap dengan middleware
+const wrappedHandler = corsMiddleware(authenticatedHandler);
+
+export const POST = errorHandler(loggingMiddleware(wrappedHandler));

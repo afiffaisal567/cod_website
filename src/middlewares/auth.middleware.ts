@@ -1,4 +1,3 @@
-// middlewares/auth.middleware.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAccessToken, extractTokenFromHeader } from "@/lib/auth";
 import { unauthorizedResponse, forbiddenResponse } from "@/utils/response.util";
@@ -10,6 +9,10 @@ export interface AuthenticatedUser {
   userId: string;
   email: string;
   role: string;
+}
+
+export interface AuthHandlerContext {
+  params: { [key: string]: string };
 }
 
 export async function authMiddleware(
@@ -60,7 +63,6 @@ export async function authMiddleware(
       role: user.role,
     });
 
-    // Return user object instead of modifying headers
     return {
       user: {
         userId: user.id,
@@ -72,11 +74,6 @@ export async function authMiddleware(
     console.error("❌ Auth middleware error:", error);
     return unauthorizedResponse("Authentication failed");
   }
-}
-
-// Extended interface untuk handler dengan context
-export interface AuthHandlerContext {
-  params: { [key: string]: string };
 }
 
 export function requireAuth(
@@ -92,14 +89,33 @@ export function requireAuth(
   return async (request: NextRequest, context: AuthHandlerContext) => {
     const authResult = await authMiddleware(request);
 
-    // Jika authResult adalah NextResponse (error), kembalikan error
     if (authResult instanceof NextResponse) {
       console.log("❌ Auth failed, returning:", authResult.status);
       return authResult;
     }
 
-    // Jika authResult berisi user, panggil handler dengan user dan context
     console.log("✅ Auth successful, proceeding to handler");
     return handler(request, context, authResult.user);
   };
+}
+
+// Helper function untuk mendapatkan user yang terautentikasi
+export function getAuthenticatedUser(
+  request: NextRequest
+): AuthenticatedUser | null {
+  try {
+    const authHeader = request.headers.get("Authorization");
+    const token = extractTokenFromHeader(authHeader);
+
+    if (!token) return null;
+
+    const payload = verifyAccessToken(token);
+    return {
+      userId: payload.userId,
+      email: payload.email,
+      role: payload.role,
+    };
+  } catch {
+    return null;
+  }
 }

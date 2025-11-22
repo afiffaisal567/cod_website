@@ -16,8 +16,8 @@ export class CategoryService {
       },
     });
 
-    // Filter only top-level categories
-    const topLevelCategories = categories.filter((cat) => !cat.parent_id);
+    // Filter only top-level categories dengan tipe yang benar
+    const topLevelCategories = categories.filter((cat: any) => !cat.parent_id);
 
     return topLevelCategories;
   }

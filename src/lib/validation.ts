@@ -37,7 +37,6 @@ export const loginSchema = z.object({
 export const forgotPasswordSchema = z.object({
   email: z.string().email("Invalid email format"),
 });
-
 export const resendVerificationSchema = z.object({
   email: z.string().email("Invalid email format"),
 });

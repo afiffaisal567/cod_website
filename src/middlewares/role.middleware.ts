@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from './auth.middleware';
-import { forbiddenResponse } from '@/utils/response.util';
-import { USER_ROLES } from '@/lib/constants';
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthenticatedUser } from "./auth.middleware";
+import { forbiddenResponse } from "@/utils/response.util";
+import { USER_ROLES } from "@/lib/constants";
 
 /**
  * Role-based Access Control Middleware
@@ -17,12 +17,12 @@ export function requireRole(
       const user = getAuthenticatedUser(request);
 
       if (!user) {
-        return forbiddenResponse('Authentication required');
+        return forbiddenResponse("Authentication required");
       }
 
       // Check if user has required role
       if (!allowedRoles.includes(user.role)) {
-        return forbiddenResponse('Insufficient permissions');
+        return forbiddenResponse("Insufficient permissions");
       }
 
       // User has required role, proceed to handler
@@ -55,7 +55,9 @@ export function requireMentor(
 export function requireStudent(
   handler: (request: NextRequest) => Promise<NextResponse>
 ): (request: NextRequest) => Promise<NextResponse> {
-  return requireRole([USER_ROLES.STUDENT, USER_ROLES.MENTOR, USER_ROLES.ADMIN])(handler);
+  return requireRole([USER_ROLES.STUDENT, USER_ROLES.MENTOR, USER_ROLES.ADMIN])(
+    handler
+  );
 }
 
 /**
@@ -93,7 +95,7 @@ export function requireOwnership(
       const user = getAuthenticatedUser(request);
 
       if (!user) {
-        return forbiddenResponse('Authentication required');
+        return forbiddenResponse("Authentication required");
       }
 
       // Admin can access any resource
@@ -105,12 +107,14 @@ export function requireOwnership(
       const resourceUserId = await getResourceUserId(request);
 
       if (!resourceUserId) {
-        return forbiddenResponse('Resource not found');
+        return forbiddenResponse("Resource not found");
       }
 
       // Check ownership
       if (user.userId !== resourceUserId) {
-        return forbiddenResponse('You do not have permission to access this resource');
+        return forbiddenResponse(
+          "You do not have permission to access this resource"
+        );
       }
 
       return handler(request);

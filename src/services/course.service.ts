@@ -402,10 +402,10 @@ export class CourseService {
       prisma.course.count({ where }),
     ]);
 
-    // Transform data to include enrollment status
-    const transformedCourses = courses.map((course) => ({
+    // Transform data to include enrollment status - FIXED: Add type annotation
+    const transformedCourses = courses.map((course: any) => ({
       ...course,
-      enrollment: (course as any).enrollments?.[0] || null,
+      enrollment: course.enrollments?.[0] || null,
       enrollments: undefined, // Remove enrollments array
     }));
 

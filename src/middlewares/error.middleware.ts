@@ -13,14 +13,14 @@ import { logError } from "@/utils/logger.util";
 import { ZodError } from "zod";
 
 /**
- * Global Error Handler Middleware
+ * Global Error Handler Middleware - Fixed to handle context parameter
  */
-export function errorHandler(
-  handler: (request: NextRequest) => Promise<NextResponse>
-): (request: NextRequest) => Promise<NextResponse> {
-  return async (request: NextRequest) => {
+export function errorHandler<T = any>(
+  handler: (request: NextRequest, context?: T) => Promise<NextResponse>
+): (request: NextRequest, context?: T) => Promise<NextResponse> {
+  return async (request: NextRequest, context?: T) => {
     try {
-      return await handler(request);
+      return await handler(request, context);
     } catch (error) {
       return handleError(error);
     }
